@@ -22,6 +22,21 @@ set(PROJECT_VERSION 0.10.0)
 ## Enable languages for project
 enable_language(CXX C ASM)
 
+set(TRACE_SOURCES
+    "src/TraceRecorder/trcInternalBuffer.c"
+    "src/TraceRecorder/trcSnapshotRecorder.c"
+    "src/TraceRecorder/trcStreamingRecorder.c"
+    "src/TraceRecorder/streamports/xScope/trcStreamingPort.c"
+    "src/TraceRecorder/kernelports/FreeRTOS_SMP/trcKernelPort.c"
+)
+
+set(TRACE_INCLUDES
+    "src/TraceRecorder/include"
+    "src/TraceRecorder/streamports/xScope/include"
+    "src/TraceRecorder/kernelports/FreeRTOS_SMP/config"
+    "src/TraceRecorder/kernelports/FreeRTOS_SMP/include"
+)
+
 set(VFE_LIB_INCLUDES
     "src/vfe_pipeline/vfe"
     "src/vfe_pipeline/vfe/agc/api"
@@ -72,6 +87,7 @@ set(APP_SOURCES
     "src/ww_model_runner/ww_model_runner.c"
 
     "src/gpio_test/gpio_test.c"
+    ${TRACE_SOURCES}
 )
 
 set_source_files_properties(src/usb/adaptive_rate_adjust.c PROPERTIES COMPILE_FLAGS "-O3")
@@ -81,6 +97,7 @@ set(APP_INCLUDES
     "src/vfe_pipeline"
     "src/usb"
     "src/ww_model_runner"
+    ${TRACE_INCLUDES}
 )
 
 add_compile_definitions(
@@ -90,6 +107,7 @@ add_compile_definitions(
 
     CFG_TUSB_DEBUG_PRINTF=rtos_printf
     CFG_TUSB_DEBUG=0
+    RTOS_LOCKS_SAFE
 )
 
 add_executable(${TARGET_NAME})

@@ -33,6 +33,34 @@
 volatile int mic_from_usb = appconfMIC_SRC_DEFAULT;
 volatile int aec_ref_source = appconfAEC_REF_DEFAULT;
 
+void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
+                                    StackType_t **ppxIdleTaskStackBuffer,
+                                    uint32_t *pulIdleTaskStackSize )
+{
+	static StaticTask_t xIdleTaskTCB;
+	static StackType_t uxIdleTaskStack[ configMINIMAL_STACK_SIZE ];
+
+    *ppxIdleTaskTCBBuffer = &xIdleTaskTCB;
+
+    *ppxIdleTaskStackBuffer = uxIdleTaskStack;
+
+    *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+}
+
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
+                                    		StackType_t **ppxTimerTaskStackBuffer,
+                                    		uint32_t *pulTimerTaskStackSize )
+{
+	static StaticTask_t xTimerTaskTCB;
+	static StackType_t uxTimerTaskStack[ configMINIMAL_STACK_SIZE ];
+
+    *ppxTimerTaskTCBBuffer = &xTimerTaskTCB;
+
+    *ppxTimerTaskStackBuffer = uxTimerTaskStack;
+
+    *pulTimerTaskStackSize = configMINIMAL_STACK_SIZE;
+}
+
 void vfe_pipeline_input(void *input_app_data,
                         int32_t (*mic_audio_frame)[2],
                         int32_t (*ref_audio_frame)[2],
@@ -262,6 +290,8 @@ static void mem_analysis(void)
 
 void startup_task(void *arg)
 {
+    vTraceEnable(TRC_START);
+
     rtos_printf("Startup task running from tile %d on core %d\n", THIS_XCORE_TILE, portGET_CORE_ID());
 
     platform_start();
@@ -291,6 +321,10 @@ void startup_task(void *arg)
 
 void vApplicationMinimalIdleHook(void)
 {
+    /* THIS WILL ONLY WORK ONCE */
+    TaskStatus_t status;
+    vTaskGetInfo(NULL, &status, pdTRUE, eInvalid);
+
     rtos_printf("idle hook on tile %d core %d\n", THIS_XCORE_TILE, rtos_core_id_get());
     asm volatile("waiteu");
 }

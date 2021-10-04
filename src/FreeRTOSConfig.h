@@ -41,7 +41,7 @@ your application. */
 #define configMESSAGE_BUFFER_LENGTH_TYPE        size_t
 
 /* Memory allocation related definitions. */
-#define configSUPPORT_STATIC_ALLOCATION         0
+#define configSUPPORT_STATIC_ALLOCATION         1
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 #if ON_TILE(0)
 #define configTOTAL_HEAP_SIZE                   128*1024
@@ -61,13 +61,18 @@ your application. */
 #define configUSE_CORE_INIT_HOOK                0
 
 /* Run time and task stats gathering related definitions. */
-#define configGENERATE_RUN_TIME_STATS           0
-#if ENABLE_RTOS_XSCOPE_TRACE
+// #define configGENERATE_RUN_TIME_STATS           0
+// #if ENABLE_RTOS_XSCOPE_TRACE
+// #define configUSE_TRACE_FACILITY                1
+// #else
+// #define configUSE_TRACE_FACILITY                0
+// #endif
+// #define configUSE_STATS_FORMATTING_FUNCTIONS    2 /* Setting to 2 does not include <stdio.h> in tasks.c */
+
+#define configGENERATE_RUN_TIME_STATS           1
 #define configUSE_TRACE_FACILITY                1
-#else
-#define configUSE_TRACE_FACILITY                0
-#endif
-#define configUSE_STATS_FORMATTING_FUNCTIONS    2 /* Setting to 2 does not include <stdio.h> in tasks.c */
+#define configUSE_STATS_FORMATTING_FUNCTIONS    1
+#define confSTAT_TYPE uint64_t
 
 /* Co-routine related definitions. */
 #define configUSE_CO_ROUTINES                   0
@@ -122,8 +127,12 @@ your application. */
 #define INCLUDE_xQueueGetMutexHolder            1
 
 /* A header file that defines trace macro can be included here. */
-#if ENABLE_RTOS_XSCOPE_TRACE
-#include "xcore_trace.h"
+// #if ENABLE_RTOS_XSCOPE_TRACE
+// #include "xcore_trace.h"
+// #endif
+
+#ifndef __XC__
+#include "trcRecorder.h"
 #endif
 
 #endif /* FREERTOS_CONFIG_H */
