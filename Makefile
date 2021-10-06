@@ -53,7 +53,7 @@ distclean:
 	rm -rf $(OUTPUT_DIR)
 
 run: $(EXECUTABLE)
-	xrun --xscope $(EXECUTABLE)
+	xrun --xscope-file scope $(EXECUTABLE)
 
 flash: $(EXECUTABLE)
 	cd filesystem_support && ./flash_image.sh

@@ -233,7 +233,7 @@ extern "C" {
  *
  * Default value is 0 since dependent on stream_buffer.c (new in FreeRTOS v10)
  ******************************************************************************/
-#define TRC_CFG_INCLUDE_STREAM_BUFFER_EVENTS 0
+#define TRC_CFG_INCLUDE_STREAM_BUFFER_EVENTS 1
 
  /******************************************************************************
  * TRC_CFG_ENABLE_STACK_MONITOR

@@ -293,9 +293,16 @@ unsigned char prvTraceIsSchedulerSuspended(void);
 
 #if (TRC_CFG_HARDWARE_PORT == TRC_HARDWARE_PORT_XMOS_XCOREAI)
 	#define TRC_GET_CURRENT_CORE() rtos_core_id_get()
-	#define TRACE_ALLOC_CRITICAL_SECTION() portBASE_TYPE __irq_status;
-	#define TRACE_ENTER_CRITICAL_SECTION() {__irq_status = portSET_INTERRUPT_MASK_FROM_ISR();}
-	#define TRACE_EXIT_CRITICAL_SECTION() {portCLEAR_INTERRUPT_MASK_FROM_ISR(__irq_status);}
+
+	#ifndef TRC_CFG_PLATFORM_LOCKLESS
+		#define TRACE_ALLOC_CRITICAL_SECTION()
+		#define TRACE_ENTER_CRITICAL_SECTION() portENTER_CRITICAL()
+		#define TRACE_EXIT_CRITICAL_SECTION() portEXIT_CRITICAL()
+	#else
+		#define TRACE_ALLOC_CRITICAL_SECTION() uint32_t __irq_status;
+		#define TRACE_ENTER_CRITICAL_SECTION() {__irq_status = portDISABLE_INTERRUPTS();}
+		#define TRACE_EXIT_CRITICAL_SECTION() {portRESTORE_INTERRUPTS(__irq_status);}
+	#endif
 #endif
 
 #ifndef TRACE_ENTER_CRITICAL_SECTION

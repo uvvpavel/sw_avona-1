@@ -91,6 +91,11 @@ set(APP_SOURCES
 )
 
 set_source_files_properties(src/usb/adaptive_rate_adjust.c PROPERTIES COMPILE_FLAGS "-O3")
+set_source_files_properties(src/TraceRecorder/trcInternalBuffer.c PROPERTIES COMPILE_FLAGS "-O2")
+set_source_files_properties(src/TraceRecorder/trcSnapshotRecorder.c PROPERTIES COMPILE_FLAGS "-O2")
+set_source_files_properties(src/TraceRecorder/trcStreamingRecorder.c PROPERTIES COMPILE_FLAGS "-O2")
+set_source_files_properties(src/TraceRecorder/streamports/xScope/trcStreamingPort.c PROPERTIES COMPILE_FLAGS "-O2")
+set_source_files_properties(src/TraceRecorder/kernelports/FreeRTOS_SMP/trcKernelPort.c PROPERTIES COMPILE_FLAGS "-O2")
 
 set(APP_INCLUDES
     "src"

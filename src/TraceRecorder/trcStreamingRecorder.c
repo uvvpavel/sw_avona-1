@@ -179,7 +179,8 @@ static uint16_t FormatVersion = 0x0009;
 
 /* The number of events stored. Used as event sequence number. */
 #ifdef TRC_CFG_PLATFORM_LOCKLESS
-static uint32_t eventCounter[configNUM_CORES] = {0};
+static uint32_t eventCounters[configNUM_CORES] = {0};
+#define eventCounter eventCounters[TRC_GET_CURRENT_CORE()]
 #else
 static uint32_t eventCounter = 0;
 #endif
@@ -937,10 +938,6 @@ static void prvTraceStoreStartEvent()
 {
 	void* currentTask;
 	
-	TRACE_ALLOC_CRITICAL_SECTION();
-	
-	TRACE_ENTER_CRITICAL_SECTION();
-	
 	if (uiTraceSystemState == TRC_STATE_IN_STARTUP)
 	{
 		currentTask = (void*)HANDLE_NO_TASK;
@@ -950,22 +947,15 @@ static void prvTraceStoreStartEvent()
 		currentTask = (void*)TRACE_GET_CURRENT_TASK();
 	}
 	
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-	eventCounter[TRC_GET_CURRENT_CORE()]++;
-#else
 	eventCounter++;
-#endif
 	
 	{
 		TRC_STREAM_PORT_ALLOCATE_EVENT_BLOCKING(EventWithParam_3, pxEvent, sizeof(EventWithParam_3));
 		if (pxEvent != NULL)
 		{
 			pxEvent->base.EventID = PSF_EVENT_TRACE_START | PARAM_COUNT(3);
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-			pxEvent->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter[TRC_GET_CURRENT_CORE()]);
-#else
 			pxEvent->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter);
-#endif
+
 			pxEvent->base.TS = prvGetTimestamp32();
 			pxEvent->param1 = (uint32_t)TRACE_GET_OS_TICKS();
 			pxEvent->param2 = (uint32_t)currentTask;
@@ -973,8 +963,6 @@ static void prvTraceStoreStartEvent()
 			TRC_STREAM_PORT_COMMIT_EVENT_BLOCKING(pxEvent, sizeof(EventWithParam_3));
 		}
 	}
-	
-	TRACE_EXIT_CRITICAL_SECTION();
 }
 
 /* Store the Timestamp Config event */
@@ -986,12 +974,7 @@ static void prvTraceStoreTSConfig(void)
 		timestampFrequency = TRC_HWTC_FREQ_HZ;
 	}
 
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-	eventCounter[TRC_GET_CURRENT_CORE()]++;
-#else
 	eventCounter++;
-#endif
-	
 
 	{
 #if (TRC_HWTC_TYPE == TRC_CUSTOM_TIMER_INCR || TRC_HWTC_TYPE == TRC_CUSTOM_TIMER_DECR)
@@ -1015,11 +998,8 @@ static void prvTraceStoreTSConfig(void)
 		if (event != NULL)
 		{
 			event->base.EventID = PSF_EVENT_TS_CONFIG | (uint16_t)PARAM_COUNT(4);
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-			event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter[TRC_GET_CURRENT_CORE()]);
-#else
 			event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter);
-#endif
+
 			event->base.TS = prvGetTimestamp32();
 						
 			event->param1 = (uint32_t)timestampFrequency;
@@ -1038,10 +1018,6 @@ static void prvTraceStoreSymbolTable(void)
 {
 	uint32_t i = 0;
 	uint32_t j = 0;
-	TRACE_ALLOC_CRITICAL_SECTION();
-
-	TRACE_ENTER_CRITICAL_SECTION();
-	
 	{
 		for (i = 0; i < (sizeof(SymbolTable) / sizeof(uint32_t)); i += (SYMBOL_TABLE_SLOT_SIZE / sizeof(uint32_t)))
 		{
@@ -1055,7 +1031,6 @@ static void prvTraceStoreSymbolTable(void)
 			TRC_STREAM_PORT_COMMIT_EVENT_BLOCKING(data, SYMBOL_TABLE_SLOT_SIZE);						
 		}
 	}
-	TRACE_EXIT_CRITICAL_SECTION();
 }
 
 /* Stores the object table on Start */
@@ -1063,9 +1038,6 @@ static void prvTraceStoreObjectDataTable(void)
 {
 	uint32_t i = 0;
 	uint32_t j = 0;
-	TRACE_ALLOC_CRITICAL_SECTION();
-
-	TRACE_ENTER_CRITICAL_SECTION();
 
 	{
 		for (i = 0; i < (sizeof(ObjectDataTable) / sizeof(uint32_t)); i += (OBJECT_DATA_SLOT_SIZE / sizeof(uint32_t)))
@@ -1080,7 +1052,6 @@ static void prvTraceStoreObjectDataTable(void)
 			TRC_STREAM_PORT_COMMIT_EVENT_BLOCKING(data, OBJECT_DATA_SLOT_SIZE);			
         }
 	}
-	TRACE_EXIT_CRITICAL_SECTION();
 }
 
 /* Stores the header information on Start */
@@ -1088,11 +1059,6 @@ static void prvTraceStoreHeader(void)
 {
 	int i;
 	char* platform_cfg = TRC_PLATFORM_CFG;
-
-  	TRACE_ALLOC_CRITICAL_SECTION();
-
-	TRACE_ENTER_CRITICAL_SECTION();
-
 	{
 	  	TRC_STREAM_PORT_ALLOCATE_EVENT_BLOCKING(PSFHeaderInfo, header, sizeof(PSFHeaderInfo));
 		header->psf = PSFEndianessIdentifier;
@@ -1122,22 +1088,16 @@ static void prvTraceStoreHeader(void)
 		header->objectDataCount = (TRC_CFG_OBJECT_DATA_SLOTS);
 		TRC_STREAM_PORT_COMMIT_EVENT_BLOCKING(header, sizeof(PSFHeaderInfo));
 	}
-	TRACE_EXIT_CRITICAL_SECTION();
 }
 
 /* Stores the header information on Start */
 static void prvTraceStoreExtensionInfo(void)
 {
-  	TRACE_ALLOC_CRITICAL_SECTION();
-
-	TRACE_ENTER_CRITICAL_SECTION();
-
 	{
 		TRC_STREAM_PORT_ALLOCATE_EVENT_BLOCKING(PSFExtensionInfoType, extinfo, sizeof(PSFExtensionInfoType));
 		memcpy(extinfo, &PSFExtensionInfo, sizeof(PSFExtensionInfoType));
 		TRC_STREAM_PORT_COMMIT_EVENT_BLOCKING(extinfo, sizeof(PSFExtensionInfoType));		
 	}
-	TRACE_EXIT_CRITICAL_SECTION();
 }
 
 /* Returns the error or warning, as a string, or NULL if none. */
@@ -1283,11 +1243,7 @@ traceResult prvTraceBeginStoreEvent(uint32_t uiEventCode, uint32_t uiTotalPayloa
 		return TRACE_FAIL;
 	}
 
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-	eventCounter[TRC_GET_CURRENT_CORE()]++;
-#else
 	eventCounter++;
-#endif
 
 	uiCurrentEventPayloadSize = uiTotalPayloadSize;
 	uiCurrentEventPayloadOffset = 0;
@@ -1298,11 +1254,7 @@ traceResult prvTraceBeginStoreEvent(uint32_t uiEventCode, uint32_t uiTotalPayloa
 	if (pxEvent != 0)
 	{
 		pxEvent->base.EventID = (uint16_t)uiEventCode | PARAM_COUNT(uiPayloadCount);
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-		pxEvent->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter[TRC_GET_CURRENT_CORE()]);
-#else
 		pxEvent->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter);
-#endif
 
 		pvCurrentEvent = pxEvent;
 	}
@@ -1432,125 +1384,6 @@ traceResult prvTraceStoreEventPayload8(uint8_t value)
 	return TRACE_SUCCESS;
 }
 
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-/* Store an event with zero parameters (event ID only) */
-void prvTraceStoreEvent0(uint16_t eventID)
-{
-	PSF_ASSERT_VOID(eventID < 4096, PSF_ERROR_EVENT_CODE_TOO_LARGE);
-
-	eventCounter[TRC_GET_CURRENT_CORE()]++;
-
-	{
-		TRC_STREAM_PORT_ALLOCATE_EVENT(BaseEvent, event, sizeof(BaseEvent));
-		if (event != NULL)
-		{
-			event->EventID = eventID | PARAM_COUNT(0);
-			event->EventCount = (uint16_t)eventCounter[TRC_GET_CURRENT_CORE()];
-			event->TS = prvGetTimestamp32();
-			TRC_STREAM_PORT_COMMIT_EVENT(event, sizeof(BaseEvent));
-		}
-	}
-}
-
-/* Store an event with one 32-bit parameter (pointer address or an int) */
-void prvTraceStoreEvent1(uint16_t eventID, uint32_t param1)
-{
-	PSF_ASSERT_VOID(eventID < 4096, PSF_ERROR_EVENT_CODE_TOO_LARGE);
-
-	eventCounter[TRC_GET_CURRENT_CORE()]++;
-
-	{
-		TRC_STREAM_PORT_ALLOCATE_EVENT(EventWithParam_1, event, sizeof(EventWithParam_1));
-		if (event != NULL)
-		{
-			event->base.EventID = eventID | PARAM_COUNT(1);
-			event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(TRC_GET_CURRENT_CORE());
-			event->base.TS = prvGetTimestamp32();
-			event->param1 = (uint32_t)param1;
-			TRC_STREAM_PORT_COMMIT_EVENT(event, sizeof(EventWithParam_1));
-		}
-	}
-}
-
-/* Store an event with two 32-bit parameters */
-void prvTraceStoreEvent2(uint16_t eventID, uint32_t param1, uint32_t param2)
-{
-	PSF_ASSERT_VOID(eventID < 4096, PSF_ERROR_EVENT_CODE_TOO_LARGE);
-
-	eventCounter[TRC_GET_CURRENT_CORE()]++;
-
-	{
-		TRC_STREAM_PORT_ALLOCATE_EVENT(EventWithParam_2, event, sizeof(EventWithParam_2));
-		if (event != NULL)
-		{
-			event->base.EventID = eventID | PARAM_COUNT(2);
-			event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(TRC_GET_CURRENT_CORE());
-			event->base.TS = prvGetTimestamp32();
-			event->param1 = (uint32_t)param1;
-			event->param2 = param2;
-			TRC_STREAM_PORT_COMMIT_EVENT(event, sizeof(EventWithParam_2));
-		}
-	}
-}
-
-/* Store an event with three 32-bit parameters */
-void prvTraceStoreEvent3(	uint16_t eventID,
-						uint32_t param1,
-						uint32_t param2,
-						uint32_t param3)
-{
-	PSF_ASSERT_VOID(eventID < 4096, PSF_ERROR_EVENT_CODE_TOO_LARGE);
-
-	eventCounter[TRC_GET_CURRENT_CORE()]++;
-
-	{
-		TRC_STREAM_PORT_ALLOCATE_EVENT(EventWithParam_3, event, sizeof(EventWithParam_3));
-		if (event != NULL)
-		{
-			event->base.EventID = eventID | PARAM_COUNT(3);
-			event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(TRC_GET_CURRENT_CORE());
-			event->base.TS = prvGetTimestamp32();
-			event->param1 = (uint32_t)param1;
-			event->param2 = param2;
-			event->param3 = param3;
-			TRC_STREAM_PORT_COMMIT_EVENT(event, sizeof(EventWithParam_3));
-		}
-	}
-}
-
-/* Stores an event with <nParam> 32-bit integer parameters */
-void prvTraceStoreEvent(int nParam, uint16_t eventID, ...)
-{
-	va_list vl;
-	int i;
-
-	PSF_ASSERT_VOID(eventID < 4096, PSF_ERROR_EVENT_CODE_TOO_LARGE);
-
-	eventCounter[TRC_GET_CURRENT_CORE()]++;
-
-	int eventSize = (int)sizeof(BaseEvent) + nParam * (int)sizeof(uint32_t);
-
-	{
-		TRC_STREAM_PORT_ALLOCATE_DYNAMIC_EVENT(largestEventType, event, eventSize);
-		if (event != NULL)
-		{
-			event->base.EventID = eventID | (uint16_t)PARAM_COUNT(nParam);
-			event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(TRC_GET_CURRENT_CORE());
-			event->base.TS = prvGetTimestamp32();
-
-			va_start(vl, eventID);
-			for (i = 0; i < nParam; i++)
-			{
-				uint32_t* tmp = (uint32_t*) &(event->data[i]);
-				*tmp = va_arg(vl, uint32_t);
-			}
-			va_end(vl);
-
-			TRC_STREAM_PORT_COMMIT_EVENT(event, (uint32_t)eventSize);
-		}
-	}
-}
-#else
 /* Store an event with zero parameters (event ID only) */
 void prvTraceStoreEvent0(uint16_t eventID)
 {
@@ -1707,7 +1540,6 @@ void prvTraceStoreEvent(int nParam, uint16_t eventID, ...)
 	}
 	TRACE_EXIT_CRITICAL_SECTION();
 }
-#endif
 
 /* Stories an event with a string and <nParam> 32-bit integer parameters */
 void prvTraceStoreStringEvent(int nArgs, uint16_t eventID, const char* str, ...)
@@ -1768,11 +1600,7 @@ static void prvTraceStoreStringEventHelper(int nArgs,
 	{
 		int eventSize = (int)sizeof(BaseEvent) + nWords * (int)sizeof(uint32_t);
 
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-		eventCounter[TRC_GET_CURRENT_CORE()]++;
-#else
 		eventCounter++;
-#endif
 
 		{
 			TRC_STREAM_PORT_ALLOCATE_DYNAMIC_EVENT(largestEventType, event, eventSize);
@@ -1781,11 +1609,7 @@ static void prvTraceStoreStringEventHelper(int nArgs,
 				uint32_t* data32;
 				uint8_t* data8;
 				event->base.EventID = (eventID) | (uint16_t)PARAM_COUNT(nWords);
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-				event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter[TRC_GET_CURRENT_CORE()]);
-#else
 				event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter);
-#endif
 				event->base.TS = prvGetTimestamp32();
 
 				/* 32-bit write-pointer for the data argument */
@@ -1874,11 +1698,7 @@ void prvTraceStoreSimpleStringEventHelper(uint16_t eventID,
 	{
 		int eventSize = (int)sizeof(BaseEvent) + nWords * (int)sizeof(uint32_t);
 
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-			eventCounter[TRC_GET_CURRENT_CORE()]++;
-#else
 			eventCounter++;
-#endif
 
 		{
 			TRC_STREAM_PORT_ALLOCATE_DYNAMIC_EVENT(largestEventType, event, eventSize);
@@ -1887,11 +1707,7 @@ void prvTraceStoreSimpleStringEventHelper(uint16_t eventID,
 				uint32_t* data32;
 				uint8_t* data8;
 				event->base.EventID = (eventID) | (uint16_t)PARAM_COUNT(nWords);
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-				event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter[TRC_GET_CURRENT_CORE()]);
-#else
 				event->base.EventCount = (uint16_t)TRC_GET_EVENT_COUNT(eventCounter);
-#endif
 				event->base.TS = prvGetTimestamp32();
 
 				/* 32-bit write-pointer for the data argument */

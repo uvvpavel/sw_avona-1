@@ -23,7 +23,7 @@ int32_t readFromxScope(void* ptrData, uint32_t size, int32_t* ptrBytesRead)
 
 uint32_t g_bytes_written[configNUM_CORES] = {0};
 
-#define WRITE_BUFFER_SIZE 1024
+#define WRITE_BUFFER_SIZE 4*1024
 
 #ifdef TRC_CFG_PLATFORM_LOCKLESS
 volatile char 		g_write_buffer[configNUM_CORES][WRITE_BUFFER_SIZE]	= {{0}};
@@ -35,42 +35,39 @@ volatile uint32_t	g_write_buffer_bytes 				= 0;
 
 int32_t writeToxScope(void* ptrData, uint32_t size, int32_t* ptrBytesWritten)
 {
-#ifdef TRC_CFG_PLATFORM_LOCKLESS
-	if ((g_write_buffer_bytes[rtos_core_id_get()] + size) >= WRITE_BUFFER_SIZE) {
-		TRACE_ALLOC_CRITICAL_SECTION();
-		TRACE_ENTER_CRITICAL_SECTION();
-		
-		xscope_bytes(0, g_write_buffer_bytes[rtos_core_id_get()], (unsigned char*)g_write_buffer[rtos_core_id_get()]);
-		
-		TRACE_EXIT_CRITICAL_SECTION();
-
-		g_write_buffer_bytes[rtos_core_id_get()] = 0;
-	}
-
-	memcpy(&g_write_buffer[rtos_core_id_get()][g_write_buffer_bytes[rtos_core_id_get()]], ptrData, size);
-	g_write_buffer_bytes[rtos_core_id_get()] += size;
-#else
 	TRACE_ALLOC_CRITICAL_SECTION();
 	TRACE_ENTER_CRITICAL_SECTION();
 
+	unsigned core_id = TRC_GET_CURRENT_CORE();
+#if 1
+#ifdef TRC_CFG_PLATFORM_LOCKLESS
+	if ((g_write_buffer_bytes[core_id] + size) >= WRITE_BUFFER_SIZE) {
+		xscope_bytes(0, g_write_buffer_bytes[core_id], (unsigned char*)g_write_buffer[core_id]);
+		
+		g_write_buffer_bytes[core_id] = 0;
+	}
+
+	memcpy(&g_write_buffer[core_id][g_write_buffer_bytes[core_id]], ptrData, size);
+	g_write_buffer_bytes[core_id] += size;
+#else
 	if ((g_write_buffer_bytes + size) >= WRITE_BUFFER_SIZE) {
 		xscope_bytes(0, g_write_buffer_bytes, (unsigned char*)g_write_buffer);
+
 		g_write_buffer_bytes = 0;
 	}
 
 	memcpy((void*)&g_write_buffer[g_write_buffer_bytes], ptrData, size);
 	g_write_buffer_bytes += size;
-
-	TRACE_EXIT_CRITICAL_SECTION();
 #endif
-
-
+#else
 	/* Note: Write xScope byte data, while all data should get to the XTAG,
 	we have no method of knowing if the host manages to read it before
 	it is overwritten by new data. */
-	//xscope_bytes(0, size, (unsigned char*)ptrData);
+	xscope_bytes(0, size, (unsigned char*)ptrData);
+#endif
+	g_bytes_written[core_id] += size;
 
-	g_bytes_written[rtos_core_id_get()] += size;
+	TRACE_EXIT_CRITICAL_SECTION();
 	
 	/* Everything is written, there are no partial writes in xScope */
 	*ptrBytesWritten = size;
