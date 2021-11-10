@@ -23,7 +23,7 @@ int32_t readFromxScope(void* ptrData, uint32_t size, int32_t* ptrBytesRead)
 
 uint32_t g_bytes_written[configNUM_CORES] = {0};
 
-#define WRITE_BUFFER_SIZE 4*1024
+#define WRITE_BUFFER_SIZE 1*1024
 
 #ifdef TRC_CFG_PLATFORM_LOCKLESS
 volatile char 		g_write_buffer[configNUM_CORES][WRITE_BUFFER_SIZE]	= {{0}};
@@ -39,7 +39,7 @@ int32_t writeToxScope(void* ptrData, uint32_t size, int32_t* ptrBytesWritten)
 	TRACE_ENTER_CRITICAL_SECTION();
 
 	unsigned core_id = TRC_GET_CURRENT_CORE();
-#if 1
+#if 0
 #ifdef TRC_CFG_PLATFORM_LOCKLESS
 	if ((g_write_buffer_bytes[core_id] + size) >= WRITE_BUFFER_SIZE) {
 		xscope_bytes(0, g_write_buffer_bytes[core_id], (unsigned char*)g_write_buffer[core_id]);

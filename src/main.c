@@ -4,6 +4,7 @@
 #include <platform.h>
 #include <xs1.h>
 #include <xcore/channel.h>
+#include <xscope.h>
 
 /* FreeRTOS headers */
 #include "FreeRTOS.h"
@@ -290,7 +291,7 @@ static void mem_analysis(void)
 
 void startup_task(void *arg)
 {
-    vTraceEnable(TRC_START);
+    //vTraceEnable(TRC_START);
 
     rtos_printf("Startup task running from tile %d on core %d\n", THIS_XCORE_TILE, portGET_CORE_ID());
 
@@ -333,6 +334,8 @@ static void tile_common_init(chanend_t c)
 {
     control_ret_t ctrl_ret;
 
+    xscope_mode_lossless();
+    vTraceEnable(TRC_START);
     platform_init(c);
     chanend_free(c);
 

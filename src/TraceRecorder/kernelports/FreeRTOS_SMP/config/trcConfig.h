@@ -100,7 +100,7 @@ extern "C" {
  *
  * Default value is 0 (= include additional events).
  ******************************************************************************/
-#define TRC_CFG_SCHEDULING_ONLY 0
+#define TRC_CFG_SCHEDULING_ONLY 1
 
  /******************************************************************************
  * TRC_CFG_INCLUDE_MEMMANG_EVENTS
@@ -198,7 +198,7 @@ extern "C" {
  *
  * Default value is 0 (excluded) since dependent on event_groups.c
  *****************************************************************************/
-#define TRC_CFG_INCLUDE_EVENT_GROUP_EVENTS 0
+#define TRC_CFG_INCLUDE_EVENT_GROUP_EVENTS 1
 
  /*****************************************************************************
  * TRC_CFG_INCLUDE_TIMER_EVENTS
@@ -407,7 +407,7 @@ extern "C" {
 *****************************************************************************/
 #define TRC_CFG_PLATFORM_NUM_CORES configNUM_CORES
 
-//#define TRC_CFG_PLATFORM_LOCKLESS
+#define TRC_CFG_PLATFORM_LOCKLESS
 
 /* Specific configuration, depending on Streaming/Snapshot mode */
 #if (TRC_CFG_RECORDER_MODE == TRC_RECORDER_MODE_SNAPSHOT)
