@@ -115,7 +115,7 @@ void spi_slave_start_cb(rtos_spi_slave_t *ctx, void *app_data)
     mutex =  xSemaphoreCreateMutex();
     samples_to_host_stream_buf = xStreamBufferCreate(5 * appconfAUDIO_PIPELINE_FRAME_ADVANCE * SPI_CHANNELS * sizeof(samp_t), 0);
 
-    spi_irq_port = rtos_gpio_port(XS1_PORT_1D);
+    spi_irq_port = rtos_gpio_port(WIFI_WIRQ);
     rtos_gpio_port_enable(gpio_ctx_t0, spi_irq_port);
     rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 0);
 

@@ -30,9 +30,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define USE_AARDVARK_IRQ 0
+#define USE_AARDVARK_IRQ 1
 typedef int16_t samp_t;
-#define SPI_CHANNELS 6
+#define SPI_CHANNELS 2
 
 #define USE_STDOUT 0
 #define LENGTH 4000/15
@@ -102,7 +102,7 @@ int main (int argc, char *argv[])
     ch_spi_configure(cheetah, CH_SPI_POL_FALLING_RISING, CH_SPI_PHASE_SETUP_SAMPLE, CH_SPI_BITORDER_MSB, 0);
 
 #if USE_AARDVARK_IRQ
-    int r = ch_spi_bitrate(cheetah, 8000);
+    int r = ch_spi_bitrate(cheetah, 4000);
 #else
     int r = ch_spi_bitrate(cheetah, 2 * SPI_CHANNELS*8*sizeof(samp_t) * 16);
 #endif
@@ -120,7 +120,18 @@ int main (int argc, char *argv[])
     ch_spi_queue_array(cheetah, sizeof(tx_buf), (u08 *) tx_buf);
     ch_spi_queue_ss(cheetah, 0);
 
+#if USE_AARDVARK_IRQ
+    if ((aa_gpio_get(aardvark) & AA_GPIO_SDA) == 0) {
+        if ((aa_gpio_change(aardvark, 10000) & AA_GPIO_SDA) == 0) {
+            printf("Keyword not heard after 10 seconds\n");
+            goto done;
+        }
+    }
+    printf("Keyword heard\n");
+#endif
+
     FILE *f = USE_STDOUT ? stdout : fopen("audio.dat", "wb");
+
     for (int i = 0; i < LENGTH; i++) {
 
 #if USE_AARDVARK_IRQ
@@ -142,6 +153,7 @@ int main (int argc, char *argv[])
     }
 
 #if USE_AARDVARK_IRQ
+done:
     aa_close(aardvark);
 #endif
     ch_close(cheetah);

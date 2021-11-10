@@ -114,6 +114,26 @@ static uint8_t *decoder_buf_ptr = (uint8_t *)&decoder_buf;
                        cur_val & ~(1<<led) :                        \
                        (cur_val | (1<<led)));                       \
 }
+
+#define ww_wup_init()                                               \
+{                                                                   \
+    const rtos_gpio_port_id_t ww_wup_port = rtos_gpio_port(WIFI_WUP_RST_N); \
+    rtos_gpio_port_enable(gpio_ctx_t0, ww_wup_port);                \
+    rtos_gpio_port_out(gpio_ctx_t0, ww_wup_port, 0);                \
+}
+
+#define set_ww_wup()                                                \
+{                                                                   \
+    const rtos_gpio_port_id_t ww_wup_port = rtos_gpio_port(WIFI_WUP_RST_N); \
+    rtos_gpio_port_out(gpio_ctx_t0,                                 \
+                       ww_wup_port,                                 \
+                       1);                                          \
+    uint32_t t0 = get_reference_time();                             \
+    while ((get_reference_time() - t0) < 5000);                      \
+    rtos_gpio_port_out(gpio_ctx_t0,                                 \
+                       ww_wup_port,                                 \
+                       0);                                          \
+}
 #else
 #define led_init()        {;}
 #define set_led(led, val) {;}
@@ -123,6 +143,9 @@ static void detectionCallback(PryonLiteDecoderHandle handle,
                               const PryonLiteResult *result)
 {
     set_led(WW_ALEXA_LED, 1);
+#if XCOREAI_EXPLORER
+    set_ww_wup();
+#endif
     rtos_printf(
         "Wakeword Detected: keyword='%s'  confidence=%d  beginSampleIndex=%lld  "
         "endSampleIndex=%lld\n",
@@ -189,6 +212,9 @@ void model_runner_manager(void *args)
 
     rtos_printf("Setup model runner gpio\n");
     led_init();
+#if XCOREAI_EXPLORER
+    ww_wup_init();
+#endif
 
     rtos_printf("Load model to sram\n");
     prlBinaryModelLen = ww_load_model_from_fs_to_sram();

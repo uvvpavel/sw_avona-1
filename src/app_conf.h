@@ -29,7 +29,7 @@
 #endif
 
 #ifndef appconfUSB_ENABLED
-#define appconfUSB_ENABLED         1
+#define appconfUSB_ENABLED         0
 #endif
 
 #ifndef appconfWW_ENABLED
@@ -57,7 +57,7 @@
 #endif
 
 #ifndef appconfSPI_OUTPUT_ENABLED
-#define appconfSPI_OUTPUT_ENABLED  0
+#define appconfSPI_OUTPUT_ENABLED  1
 #endif
 
 #ifndef appconfI2S_AUDIO_SAMPLE_RATE
@@ -109,7 +109,7 @@
 #define appconfSPI_AUDIO_RELEASE   0
 #define appconfSPI_AUDIO_TESTING   1
 #ifndef appconfSPI_AUDIO_MODE
-#define appconfSPI_AUDIO_MODE      appconfSPI_AUDIO_TESTING
+#define appconfSPI_AUDIO_MODE      appconfSPI_AUDIO_RELEASE
 #endif
 
 #include "app_conf_check.h"

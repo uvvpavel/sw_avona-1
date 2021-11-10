@@ -93,6 +93,9 @@ static void spi_start(void)
     rtos_gpio_port_enable(gpio_ctx_t0, wifi_cs_port);
     rtos_gpio_port_out(gpio_ctx_t0, wifi_cs_port, 0x0F);
 
+    void spi_slave_start_cb(rtos_spi_slave_t *ctx, void *app_data);
+    void spi_slave_xfer_done_cb(rtos_spi_slave_t *ctx, void *app_data);
+
     rtos_spi_slave_start(spi_slave_ctx,
                          NULL,
                          (rtos_spi_slave_start_cb_t) spi_slave_start_cb,
