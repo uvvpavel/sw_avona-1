@@ -35,7 +35,7 @@ typedef int16_t samp_t;
 #define SPI_CHANNELS 2
 
 #define USE_STDOUT 0
-#define LENGTH 4000/15
+#define LENGTH 7000/15
 
 #if USE_AARDVARK_IRQ
 #include "aardvark.h"

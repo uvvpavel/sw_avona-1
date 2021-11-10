@@ -96,6 +96,10 @@ static void spi_audio_in_task(void *arg)
                 frame_length);
 
         xSemaphoreTake(mutex, portMAX_DELAY);
+        if (xStreamBufferIsFull(samples_to_host_stream_buf)) {
+            samp_t spi_audio_discard_frame[appconfAUDIO_PIPELINE_FRAME_ADVANCE][SPI_CHANNELS];
+            xStreamBufferReceive(samples_to_host_stream_buf, spi_audio_discard_frame, sizeof(spi_audio_discard_frame), 0);
+        }
         size_t txd = xStreamBufferSend(samples_to_host_stream_buf, spi_audio_in_frame, sizeof(spi_audio_in_frame), 0);
         if (txd == sizeof(spi_audio_in_frame)) {
             rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 1);
@@ -113,7 +117,7 @@ void spi_slave_start_cb(rtos_spi_slave_t *ctx, void *app_data)
     static samp_t tx_buf[appconfAUDIO_PIPELINE_FRAME_ADVANCE][SPI_CHANNELS];
 
     mutex =  xSemaphoreCreateMutex();
-    samples_to_host_stream_buf = xStreamBufferCreate(5 * appconfAUDIO_PIPELINE_FRAME_ADVANCE * SPI_CHANNELS * sizeof(samp_t), 0);
+    samples_to_host_stream_buf = xStreamBufferCreate(133 * appconfAUDIO_PIPELINE_FRAME_ADVANCE * SPI_CHANNELS * sizeof(samp_t), 0);
 
     spi_irq_port = rtos_gpio_port(WIFI_WIRQ);
     rtos_gpio_port_enable(gpio_ctx_t0, spi_irq_port);
@@ -137,10 +141,10 @@ void spi_slave_xfer_done_cb(rtos_spi_slave_t *ctx, void *app_data)
 
         xSemaphoreTake(mutex, portMAX_DELAY);
 
-        if (xStreamBufferIsFull(samples_to_host_stream_buf)) {
-            rtos_printf("SPI audio buffer full, resetting\n");
-            xStreamBufferReset(samples_to_host_stream_buf);
-        }
+//        if (xStreamBufferIsFull(samples_to_host_stream_buf)) {
+//            rtos_printf("SPI audio buffer full, resetting\n");
+//            xStreamBufferReset(samples_to_host_stream_buf);
+//        }
 
         if (tx_len != expected_length) {
             rtos_printf("SPI transferred %d bytes. Each transfer should be a full %d byte frame\n", tx_len, expected_length);
