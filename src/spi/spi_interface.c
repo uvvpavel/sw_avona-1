@@ -77,6 +77,8 @@ void spi_audio_send(rtos_intertile_t *intertile_ctx,
                       sizeof(spi_audio_in_frame));
 }
 
+static int is_full;
+
 static void spi_audio_in_task(void *arg)
 {
     for (;;) {
@@ -99,6 +101,11 @@ static void spi_audio_in_task(void *arg)
         if (xStreamBufferIsFull(samples_to_host_stream_buf)) {
             samp_t spi_audio_discard_frame[appconfAUDIO_PIPELINE_FRAME_ADVANCE][SPI_CHANNELS];
             xStreamBufferReceive(samples_to_host_stream_buf, spi_audio_discard_frame, sizeof(spi_audio_discard_frame), 0);
+
+            if (!is_full) {
+                is_full = 1;
+                rtos_printf("SPI Output buffer is now full\n");
+            }
         }
         size_t txd = xStreamBufferSend(samples_to_host_stream_buf, spi_audio_in_frame, sizeof(spi_audio_in_frame), 0);
         if (txd == sizeof(spi_audio_in_frame)) {
@@ -156,13 +163,17 @@ void spi_slave_xfer_done_cb(rtos_spi_slave_t *ctx, void *app_data)
             memset(tx_buf, 0, tx_len);
         }
 
-        if (xStreamBufferBytesAvailable(samples_to_host_stream_buf) > 0) {
+        size_t available = xStreamBufferBytesAvailable(samples_to_host_stream_buf);
+        size_t spaces = xStreamBufferSpacesAvailable(samples_to_host_stream_buf);
+        if (available > 0) {
+            rtos_printf("SPI output buffer: %d/%d\n", available, available + spaces);
 //            rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 1);
         } else {
 //            rtos_printf("SPI audio buffer drained\n");
             rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 0);
         }
 
+        is_full = 0;
         xSemaphoreGive(mutex);
     }
 }
