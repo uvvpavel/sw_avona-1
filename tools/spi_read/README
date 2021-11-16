@@ -6,3 +6,28 @@ must be obtained at the following links.
 
 https://www.totalphase.com/products/cheetah-api/
 https://www.totalphase.com/products/aardvark-software-api/
+
+For the host wakeup simulation, both the Aardvark and Cheetah devices are
+required. The Aardvark is connected to the wakeword detected IRQ and the audio
+available IRQ lines. The Cheetah, acting as a SPI master at 4 MHz, is connected
+to the SPI interface to transfer audio from the xcore to the host.
+
+The Cheetah's SPI interface's MOSI, MISO, and SCK lines must be connected
+to the Explorer board's WIFI MOSI, MISO, and CLK lines respectively that are
+found on connector J6. The Cheetah's remaining SS line must be connected to
+pin 2 on J14, which is labeled "00" on the Explorer board. Finally, both of the
+Cheetah's GND wires must be connected to ground pins on the Explorer board.
+
+The Aardvark's "SCL" and "SDA" lines must be connected to the Explorer board's
+WIFI WIRQ and WUP lines respectively that are found on connector J6. At least
+one of the Aardvark's GND wires must be connected to a ground pin on the
+Explorer board.
+
+After running compiling and running the "spi_read" program, the wakeword must
+be spoken within 10 seconds, which will start the recording. After the program
+exists, the recording can be listed to by running the command:
+aplay -c2 -r16000 -fS16_LE  audio.dat
+
+If aplay is unavailable, audio.dat, may also be imported into Audacity.
+audio.dat is in "raw" format with two signed 16 bit channels at 16 KHz.
+
