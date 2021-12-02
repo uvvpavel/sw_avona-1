@@ -25,6 +25,7 @@
 #include "usb_audio.h"
 #include "vfe_pipeline/vfe_pipeline.h"
 #include "ww_model_runner/ww_model_runner.h"
+#include "spi/spi_interface.h"
 #include "fs_support.h"
 
 #include "gpio_test/gpio_test.h"
@@ -148,12 +149,6 @@ int vfe_pipeline_output(void *output_app_data,
 #endif
 
 #if appconfSPI_OUTPUT_ENABLED
-    void spi_audio_send(rtos_intertile_t *intertile_ctx,
-                        size_t frame_count,
-                        int32_t (*processed_audio_frame)[2],
-                        int32_t (*reference_audio_frame)[2],
-                        int32_t (*raw_mic_audio_frame)[2]);
-
     spi_audio_send(intertile_ctx,
                    frame_count,
                    proc_audio_frame,
@@ -268,6 +263,10 @@ void startup_task(void *arg)
 
 #if ON_TILE(1)
     gpio_test(gpio_ctx_t0);
+#endif
+
+#if ON_TILE(0)
+    app_control_system_servicer_register();
 #endif
 
 #if ON_TILE(AUDIO_HW_TILE_NO)

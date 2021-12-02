@@ -3,7 +3,7 @@
 PROJECT_NAME = sw_avona
 
 # BOARD is used by the XMOS RTOS platform .cmake file
-BOARD ?= XCORE-AI-EXPLORER
+BOARD ?= XVF3610_Q60A
 WW ?= amazon
 APP_CONF_DEFINES ?=
 

@@ -12,6 +12,7 @@
 #include "app_conf.h"
 #include "platform/driver_instances.h"
 #include "ww_model_runner/ww_model_runner.h"
+#include "app_control/app_control.h"
 
 #include "pryon_lite.h"
 #include "fs_support.h"
@@ -46,13 +47,10 @@ static uint8_t *decoder_buf_ptr = (uint8_t *)&decoder_buf;
 
 #define led_init()                                                      \
 {                                                                       \
-    const rtos_gpio_port_id_t led_port = rtos_gpio_port(PORT_GPO);      \
-    rtos_gpio_port_enable(gpio_ctx_t0, led_port);                       \
-    rtos_gpio_port_out(gpio_ctx_t0, led_port, 0xFF);                    \
 }
 
 #define set_led(led, val)                                               \
-{                                                                       \
+{/*                                                                     \
     if (led != WW_VAD_LED)                                              \
     {                                                                   \
         const rtos_gpio_port_id_t led_port = rtos_gpio_port(PORT_GPO);  \
@@ -63,8 +61,14 @@ static uint8_t *decoder_buf_ptr = (uint8_t *)&decoder_buf;
                            (val != 0) ?                                 \
                            cur_val & ~(1<<led) :                        \
                            (cur_val | (1<<led)));                       \
-   }                                                                    \
+   }*/                                                                  \
 }
+
+#define set_ww_wup()                        \
+{                                           \
+    app_control_system_interrupt_set(0x01); \
+}
+
 #elif OSPREY_BOARD
 #define WW_ERROR_LED 4
 #define WW_VAD_LED   6
@@ -143,7 +147,7 @@ static void detectionCallback(PryonLiteDecoderHandle handle,
                               const PryonLiteResult *result)
 {
     set_led(WW_ALEXA_LED, 1);
-#if XCOREAI_EXPLORER
+#ifdef set_ww_wup
     set_ww_wup();
 #endif
     rtos_printf(
@@ -212,7 +216,7 @@ void model_runner_manager(void *args)
 
     rtos_printf("Setup model runner gpio\n");
     led_init();
-#if XCOREAI_EXPLORER
+#ifdef ww_wup_init
     ww_wup_init();
 #endif
 

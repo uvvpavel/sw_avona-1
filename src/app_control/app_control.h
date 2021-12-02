@@ -46,6 +46,11 @@ void app_control_stage1_servicer_register();
 void app_control_stage2_handler(void *state, unsigned timeout);
 void app_control_stage2_servicer_register();
 
+/***** System Control *****/
+#define APP_CONTROL_RESID_SYSTEM 5
+void app_control_system_handler(void *state, unsigned timeout);
+void app_control_system_servicer_register(void);
+void app_control_system_interrupt_set(uint8_t status);
 
 
 

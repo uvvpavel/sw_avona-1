@@ -61,6 +61,7 @@ set(APP_SOURCES
     "src/app_control/aec_control_handlers.c"
     "src/app_control/stage1_control_handlers.c"
     "src/app_control/stage2_control_handlers.c"
+    "src/app_control/system_control_handlers.c"
 
     "src/vfe_pipeline/audio_pipeline/audio_pipeline.c"
     "src/vfe_pipeline/vfe_pipeline.c"

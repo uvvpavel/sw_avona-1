@@ -16,7 +16,11 @@
 
 #define FLASH_TILE_NO      0
 #define I2C_TILE_NO        0
+#if XVF3610_Q60A
+#define I2C_CTRL_TILE_NO   0
+#elif XCOREAI_EXPLORER
 #define I2C_CTRL_TILE_NO   1
+#endif
 #define SPI_OUTPUT_TILE_NO 0
 #define AUDIO_HW_TILE_NO   1
 #define WW_TILE_NO       0

@@ -18,13 +18,18 @@
 #define reset_dac()                                                            \
 {                                                                              \
 	i2c_regop_res_t ret;                                                       \
-	ret = rtos_i2c_master_reg_write(i2c_master_ctx, IOEXP_I2C_ADDR, 6, 0xFF);  \
+	ret = rtos_i2c_master_reg_write(i2c_master_ctx, IOEXP_I2C_ADDR, 1, 0xFB);  \
+    if (ret != I2C_REGOP_SUCCESS) {                                            \
+        rtos_printf("Failed to set io expander DAC_RST_N!\n");                 \
+        return -1;                                                             \
+    }                                                                          \
+	ret = rtos_i2c_master_reg_write(i2c_master_ctx, IOEXP_I2C_ADDR, 3, 0xFB);  \
 	if (ret != I2C_REGOP_SUCCESS) {                                            \
         rtos_printf("Failed to set io expander DAC_RST_N!\n");                 \
 		return -1;                                                             \
     }                                                                          \
 	vTaskDelay(pdMS_TO_TICKS(100));                                            \
-	ret = rtos_i2c_master_reg_write(i2c_master_ctx, IOEXP_I2C_ADDR, 6, 0x7f);  \
+	ret = rtos_i2c_master_reg_write(i2c_master_ctx, IOEXP_I2C_ADDR, 1, 0xFF);  \
 	if (ret != I2C_REGOP_SUCCESS) {                                            \
         rtos_printf("Failed to set io expander DAC_RST_N!\n");                 \
 		return -1;                                                             \

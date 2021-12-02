@@ -6,6 +6,7 @@
 
 #include "app_conf.h"
 #include "platform/driver_instances.h"
+#include "app_control/app_control.h"
 
 static StreamBufferHandle_t samples_to_host_stream_buf;
 static SemaphoreHandle_t mutex;
@@ -19,6 +20,13 @@ typedef int16_t samp_t;
 #else
 #define SPI_CHANNELS 6
 #endif
+
+size_t spi_audio_frames_available()
+{
+    size_t available = xStreamBufferBytesAvailable(samples_to_host_stream_buf);
+    available /= (appconfAUDIO_PIPELINE_FRAME_ADVANCE * SPI_CHANNELS * sizeof(samp_t));
+    return available;
+}
 
 void spi_audio_send(rtos_intertile_t *intertile_ctx,
                     size_t frame_count,
@@ -109,7 +117,11 @@ static void spi_audio_in_task(void *arg)
         }
         size_t txd = xStreamBufferSend(samples_to_host_stream_buf, spi_audio_in_frame, sizeof(spi_audio_in_frame), 0);
         if (txd == sizeof(spi_audio_in_frame)) {
-            rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 1);
+            //rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 1);
+            if (txd == xStreamBufferBytesAvailable(samples_to_host_stream_buf)) {
+                /* Buffer transitioned from empty to non-empty */
+                app_control_system_interrupt_set(0x02);
+            }
         } else {
 //            rtos_printf("lost VFE output samples\n");
         }
@@ -126,11 +138,11 @@ void spi_slave_start_cb(rtos_spi_slave_t *ctx, void *app_data)
     mutex =  xSemaphoreCreateMutex();
     samples_to_host_stream_buf = xStreamBufferCreate(133 * appconfAUDIO_PIPELINE_FRAME_ADVANCE * SPI_CHANNELS * sizeof(samp_t), 0);
 
-    spi_irq_port = rtos_gpio_port(WIFI_WIRQ);
-    rtos_gpio_port_enable(gpio_ctx_t0, spi_irq_port);
-    rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 0);
+//    spi_irq_port = rtos_gpio_port(PORT_NOT_IN_PACKAGE_0); /* bit 3 is INT_N */
+//    rtos_gpio_port_enable(gpio_ctx_t0, spi_irq_port);
+//    rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 0);
 
-    xTaskCreate((TaskFunction_t) spi_audio_in_task, "spi_audio_in_task", portTASK_STACK_DEPTH(spi_audio_in_task), NULL, 16, NULL);
+    xTaskCreate((TaskFunction_t) spi_audio_in_task, "spi_audio_in_task", portTASK_STACK_DEPTH(spi_audio_in_task), NULL, appconfSPI_TASK_PRIORITY, NULL);
 
     spi_slave_xfer_prepare(ctx, NULL, 0, tx_buf, sizeof(tx_buf));
 }
@@ -159,7 +171,7 @@ void spi_slave_xfer_done_cb(rtos_spi_slave_t *ctx, void *app_data)
 
         size_t rxd = xStreamBufferReceive(samples_to_host_stream_buf, tx_buf, tx_len, 0);
         if (rxd != tx_len) {
-//            rtos_printf("SPI audio buffer empty (wanted %d, got %d), will send zeros\n", tx_len, rxd);
+            rtos_printf("SPI audio buffer empty (wanted %d, got %d), will send zeros\n", tx_len, rxd);
             memset(tx_buf, 0, tx_len);
         }
 
@@ -167,10 +179,9 @@ void spi_slave_xfer_done_cb(rtos_spi_slave_t *ctx, void *app_data)
         size_t spaces = xStreamBufferSpacesAvailable(samples_to_host_stream_buf);
         if (available > 0) {
             rtos_printf("SPI output buffer: %d/%d\n", available, available + spaces);
-//            rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 1);
         } else {
 //            rtos_printf("SPI audio buffer drained\n");
-            rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 0);
+            //rtos_gpio_port_out(gpio_ctx_t0, spi_irq_port, 0);
         }
 
         is_full = 0;

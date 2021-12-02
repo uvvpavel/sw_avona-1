@@ -35,10 +35,23 @@
 #define PORT_I2S_ADC_DATA   I2S_MIC_DATA
 #define PORT_I2C_SLAVE_SCL  PORT_I2C_SCL
 #define PORT_I2C_SLAVE_SDA  PORT_I2C_SDA
+#define PORT_SPI_CS         PORT_SSB
+#define PORT_SPI_SCLK       PORT_SQI_SCLK_0
+
 #elif XCOREAI_EXPLORER
 #define PORT_MCLK           PORT_MCLK_IN
+#define PORT_SPI_CS         XS1_PORT_1A
+#define PORT_SPI_SCLK       WIFI_CLK
+#define PORT_SPI_MOSI       WIFI_MOSI
+#define PORT_SPI_MISO       WIFI_MISO
+
 #elif OSPREY_BOARD
 #define PORT_MCLK           PORT_MCLK_IN
+#define PORT_SPI_CS         XS1_PORT_1A
+#define PORT_SQI_SCLK       WIFI_CLK
+#define PORT_SPI_MOSI       WIFI_MOSI
+#define PORT_SPI_MISO       WIFI_MISO
+
 #else
 #error Unsupported board
 #endif
@@ -148,10 +161,10 @@ static void spi_init(void)
                         (1 << appconfSPI_IO_CORE),
                         SPI_CLKBLK,
                         SPI_MODE_3,
-                        WIFI_CLK,
-                        WIFI_MOSI,
-                        WIFI_MISO,
-                        XS1_PORT_1A);
+                        PORT_SPI_SCLK,
+                        PORT_SPI_MOSI,
+                        PORT_SPI_MISO,
+                        PORT_SPI_CS);
 #endif
 }
 

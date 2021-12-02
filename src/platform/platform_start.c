@@ -5,6 +5,7 @@
 
 #include "app_control/app_control.h"
 #include "device_control_i2c.h"
+#include "spi/spi_interface.h"
 
 #include "app_conf.h"
 #include "usb_support.h"
@@ -84,17 +85,6 @@ static void i2c_slave_start(void)
 static void spi_start(void)
 {
 #if appconfSPI_OUTPUT_ENABLED && ON_TILE(SPI_OUTPUT_TILE_NO)
-
-    const rtos_gpio_port_id_t wifi_rst_port = rtos_gpio_port(WIFI_WUP_RST_N);
-    rtos_gpio_port_enable(gpio_ctx_t0, wifi_rst_port);
-    rtos_gpio_port_out(gpio_ctx_t0, wifi_rst_port, 0x00);
-
-    const rtos_gpio_port_id_t wifi_cs_port = rtos_gpio_port(WIFI_CS_N);
-    rtos_gpio_port_enable(gpio_ctx_t0, wifi_cs_port);
-    rtos_gpio_port_out(gpio_ctx_t0, wifi_cs_port, 0x0F);
-
-    void spi_slave_start_cb(rtos_spi_slave_t *ctx, void *app_data);
-    void spi_slave_xfer_done_cb(rtos_spi_slave_t *ctx, void *app_data);
 
     rtos_spi_slave_start(spi_slave_ctx,
                          NULL,

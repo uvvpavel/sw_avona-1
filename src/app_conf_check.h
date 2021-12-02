@@ -26,10 +26,10 @@
 #endif
 #endif
 
-#if XVF3610_Q60A
-#if appconfSPI_OUTPUT_ENABLED
-#error SPI audio output not currently supported on XVF3610 board
-#endif
-#endif
+//#if XVF3610_Q60A
+//#if appconfSPI_OUTPUT_ENABLED
+//#error SPI audio output not currently supported on XVF3610 board
+//#endif
+//#endif
 
 #endif /* APP_CONF_CHECK_H_ */

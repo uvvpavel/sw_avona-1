@@ -52,7 +52,7 @@
  */
 #define appconfI2C_CTRL_ENABLED    1
 #else
-#define appconfI2C_CTRL_ENABLED    0
+#define appconfI2C_CTRL_ENABLED    1//0
 #endif
 #endif
 
@@ -67,7 +67,7 @@
 
 #ifndef appconfEXTERNAL_MCLK
 #if XVF3610_Q60A && appconfI2C_CTRL_ENABLED
-#define appconfEXTERNAL_MCLK       1
+#define appconfEXTERNAL_MCLK       0//1
 #else
 #define appconfEXTERNAL_MCLK       0
 #endif
@@ -116,7 +116,7 @@
 
 /* Application control Config */
 #define appconf_CONTROL_I2C_DEVICE_ADDR 0x42
-#define appconf_CONTROL_SERVICER_COUNT  4
+#define appconf_CONTROL_SERVICER_COUNT  5
 
 /* WW Config */
 #define appconfWW_FRAMES_PER_INFERENCE          (160)
