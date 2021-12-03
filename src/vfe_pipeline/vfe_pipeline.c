@@ -68,8 +68,8 @@ volatile static uint8_t waste[DUMMY_AEC_DATA];
  * Audio pipeline runs at 16kHz with a 240 frame advance
  * split evenly among cores for now, but main core has additional work
  */
-#define AEC_MIPS_REQUIRED 10
-#define AEC_THREADS 1
+#define AEC_MIPS_REQUIRED 300
+#define AEC_THREADS 3
 #define AEC_THREAD_PRIO (configMAX_PRIORITIES - 1)
 
 #define AEC_TOTAL_CYCLE_COUNT ((AEC_MIPS_REQUIRED * 1000000 / VFE_PIPELINE_AUDIO_SAMPLE_RATE) * VFE_PIPELINE_AUDIO_FRAME_LENGTH)

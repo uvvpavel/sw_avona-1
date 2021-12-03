@@ -49,7 +49,8 @@ int save_spi_data(int pi)
 				gpio_write(pi, 8, 0);
 				int br = spi_read(pi, spi, (char *) rx_buf, sizeof(rx_buf));
 				gpio_write(pi, 8, 1);
-				//printf("br = %d\n", br);
+				time_sleep(0.001);
+
 				if (memcmp(rx_buf, zeros, sizeof(rx_buf)) != 0) {
 					fwrite(rx_buf, 1, sizeof(rx_buf), f);
 					frames_saved++;
@@ -71,10 +72,25 @@ int save_spi_data(int pi)
 void intn_cb(int pi, unsigned user_gpio, unsigned level, uint32_t tick, int *io_expander)
 {
 	static int recording;
+	static int last_mute = 0;
+	
+	//printf("CB level %d\n", level);
+
 	int input = i2c_read_byte_data(pi, *io_expander, 0x00);
+	
+	if (input < 0) {
+		printf("i2c error\n");
+		return;
+	}
 
-	if (input >= 0 && (input & 0b00000010) == 0) {
+	int mute = (input >> 7) & 1;
 
+	if (mute != last_mute) {
+		printf("Mute changed to %d\n", mute);
+		last_mute = mute;
+	}
+
+	if ((input & 0b00000010) == 0) {
 		/* interrupt from the xcore */
 
 		uint8_t ctrl_buf[3] = {5, 0x81, 1};
@@ -135,9 +151,9 @@ int main(int argc, char **argv)
 			/* Don't invert the inputs */
 			i2c_write_byte_data(pi, io_expander, 0x02, 0b00000000);
 
-			/* Don't latch the INT_N signal from the xcore */
-			//i2c_write_byte_data(pi, io_expander, 0x42, 0b00000010);
-			i2c_write_byte_data(pi, io_expander, 0x42, 0b00000000);
+			/* Latch the INT_N signal from the xcore */
+			i2c_write_byte_data(pi, io_expander, 0x42, 0b00000010);
+			//i2c_write_byte_data(pi, io_expander, 0x42, 0b00000000);
 
 			/* Disable interrupts on the INT_N signal */
 			i2c_write_byte_data(pi, io_expander, 0x45, 0b11111111);
@@ -182,88 +198,41 @@ int main(int argc, char **argv)
 		i2c_write_device(pi, xcore_ctrl, ctrl2_buf, 3);
 		i2c_read_device(pi, xcore_ctrl, &interrupt_status, 1);
 		
+		
+		/* At this point the xcore INT_N signal should be high */
+		
+		
+		/* Enable interrupts on the xcore INT_N signal */
+		i2c_write_byte_data(pi, io_expander, 0x45, 0b01111101);
+		
+		/* Ensure any outstanding interrupts are cleared */
+		i2c_read_byte_data(pi, io_expander, 0x00);
+		
+		/* At this point, the expander's INT_N signal should be high */
+		
+		//time_sleep(1);
+		
+		//printf("INTN is %d\n", gpio_read(pi, 27));
+		//set_glitch_filter(pi, 27, 10);
 		intn_cbid = callback_ex(pi, 27, FALLING_EDGE, (CBFuncEx_t) intn_cb, &io_expander); 
 
-		/* Enable interrupts on the INT_N signal */
-		i2c_read_byte_data(pi, io_expander, 0x00);
-		i2c_write_byte_data(pi, io_expander, 0x45, 0b11111101);
-		
 		/* Enable xcore interrupts */
 		ctrl_buf[3] = 1;
 		i2c_write_device(pi, xcore_ctrl, ctrl_buf, 4);
-
-		//if (gpio_read(pi, 27) == PI_LOW) {
-			
-			/* Clear the active interrupt by reading the input */
-			//printf("CLEARING\n");
-		//	intn_cbid = callback_ex(pi, 27, FALLING_EDGE, (CBFuncEx_t) intn_cb, &io_expander); 
-			//intn_cb(pi, 27, PI_LOW, 0, &io_expander);
-		//} else {
-		//	intn_cbid = callback_ex(pi, 27, FALLING_EDGE, (CBFuncEx_t) intn_cb, &io_expander); 
-		//}
-			
-	//	(void) i2c_read_byte_data(pi, io_expander, 0x00);
 		
-		
-		if (wait_for_event(pi, START_RECORDING, 10)) {
+		if (wait_for_event(pi, START_RECORDING, 100)) {
 			if (!wait_for_event(pi, DONE_RECORDING, 20)) {
 				ok = false;
 				printf("Recording failed\n");
 			}
 		} else {
+			printf("INTN is %d\n", gpio_read(pi, 27));
 			printf("Wakeword did not occur, exiting now\n");
 			ok = false;
 		}
 		
 		callback_cancel(intn_cbid);
 	}
-
-#if 0
-	if (ok) {
-
-		samp_t rx_buf[240][SPI_CHANNELS];
-		samp_t zeros[240][SPI_CHANNELS] = {{0},{0}};
-
-		FILE *f = fopen("audio.dat", "wb");
-
-		for (int i = 0; i < LENGTH; i++) {
-
-#if 0
-			if (gpio_read(pi, 15) == PI_LOW) {
-				if (wait_for_edge(pi, 15, RISING_EDGE, 1) == false) {
-					printf("timeout waiting for SPI audio. %d\n", gpio_read(pi, 15));
-					break;
-				}
-				//printf("low!\n");
-			}
-#endif
-//			while (gpio_read(pi, 15) == PI_LOW);
-
-			
-			if (!wait_for_event(pi, SPI_EVENT, 1)) {
-				printf("Timeout waiting for SPI audio\n");
-				break;
-			}
-
-			gpio_write(pi, 8, 0);
-			int br = spi_read(pi, spi, (char *) rx_buf, sizeof(rx_buf));
-			gpio_write(pi, 8, 1);
-			//printf("br = %d\n", br);
-			if (memcmp(rx_buf, zeros, sizeof(rx_buf)) != 0) {
-				fwrite(rx_buf, 1, sizeof(rx_buf), f);
-			} else {
-				//printf("ZERO\n");
-				i--;
-			}
-		}
-
-		fclose(f);
-
-
-		//printf("edge %d\n", edge);
-	
-	}
-#endif
 
 	if (spi >= 0) {
 		spi_close(pi, spi);
