@@ -172,8 +172,9 @@ int main(int argc, char **argv)
 
 	if (ok) {
 		set_mode(pi, 8, PI_OUTPUT); /* SPI CE */
-		set_mode(pi, 27, PI_INPUT); /* WW */
-		set_mode(pi, 15, PI_INPUT); /* SPI data available */
+		
+		set_mode(pi, 27, PI_INPUT); /* INT_N */
+		set_pull_up_down(pi, 27, PI_PUD_OFF);
 
 		spi = spi_open(pi, 0, 4000000, 0b100011);
 
