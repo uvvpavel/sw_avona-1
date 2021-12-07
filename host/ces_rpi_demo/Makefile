@@ -5,6 +5,6 @@ ww_demo: ww_demo.c
 
 
 ww_demo_root: ww_demo_root.c
-	gcc -Wall -pthread -o ww_demo_root ww_demo_root.c -lpigpio -lrt
+	gcc -Wall -pthread -o ww_demo_root ww_demo_root.c -lpigpio -lrt -lm
 
 

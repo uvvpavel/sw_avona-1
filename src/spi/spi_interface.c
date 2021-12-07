@@ -23,8 +23,11 @@ typedef int16_t samp_t;
 
 size_t spi_audio_frames_available()
 {
+    xSemaphoreTake(mutex, portMAX_DELAY);
     size_t available = xStreamBufferBytesAvailable(samples_to_host_stream_buf);
     available /= (appconfAUDIO_PIPELINE_FRAME_ADVANCE * SPI_CHANNELS * sizeof(samp_t));
+    xSemaphoreGive(mutex);
+
     return available;
 }
 
