@@ -2,37 +2,143 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <pigpiod_if2.h>
+#include <signal.h>
+#include <math.h>
+#include <assert.h>
+#include <pigpio.h>
 
 typedef int16_t samp_t;
 #define SPI_CHANNELS 2
 #define LENGTH 7000/15
+#define AUDIO_FRAME_LENGTH 240
+#define SPI_BUFFER_MAX_LEVEL 133
 
-#define WAKEWORD_EVENT 0
-#define SPI_EVENT 1
-#define DONE_RECORDING 2
-#define START_RECORDING 3
+#define SPI_CS_TO_CLK_MIN_TIME_US 100
+#define SPI_CS_TO_CS_MIN_TIME_US 3000
 
-int xcore_ctrl = PI_I2C_OPEN_FAILED;
-int spi = PI_SPI_OPEN_FAILED;
+#define APP_CONTROL_I2C_ADDRESS                 0x42
+#define APP_CONTROL_RESID_SYSTEM                   5
+#define APP_CONTROL_CMD_INTERRUPT_ENABLED       0x00
+#define APP_CONTROL_CMD_SYSTEM_INTERRUPT_STATUS 0x01
+#define APP_CONTROL_CMD_SPI_FRAME_COUNT         0x02
+
+static volatile int recording_done;
+
+static int xcore_ctrl = PI_I2C_OPEN_FAILED;
+static int io_expander = PI_I2C_OPEN_FAILED;
+static int spi = PI_SPI_OPEN_FAILED;
 
 static int frames_saved;
 
-
-static size_t spi_frames_available(int pi)
+static void avona_dev_ctrl_write(uint8_t resid, uint8_t cmd, uint8_t len, const void *data)
 {
-	uint8_t ctrl_buf[3] = {5, 0x82, 4};
+	uint8_t ctrl_buf[3 + UINT8_MAX];
+
+	ctrl_buf[0] = resid;
+	ctrl_buf[1] = cmd & 0x7F;
+	ctrl_buf[2] = len;
+
+	assert(len <= UINT8_MAX);
+	memcpy(&ctrl_buf[3], data, len);
+
+	i2cWriteDevice(xcore_ctrl, (char *) ctrl_buf, 3 + len);
+}
+
+static void avona_dev_ctrl_read(uint8_t resid, uint8_t cmd, uint8_t len, void *data)
+{
+	uint8_t ctrl_buf[3];
+
+	ctrl_buf[0] = resid;
+	ctrl_buf[1] = cmd | 0x80;
+	ctrl_buf[2] = len;
+
+	i2cWriteDevice(xcore_ctrl, (char *) ctrl_buf, 3);
+	i2cReadDevice(xcore_ctrl, (char *) data, len);
+}
+
+static size_t avona_spi_frames_available(void)
+{
 	uint32_t frames_available;
-	i2c_write_device(pi, xcore_ctrl, ctrl_buf, 3);
-	i2c_read_device(pi, xcore_ctrl, &frames_available, 4);
-	
+
+	avona_dev_ctrl_read(APP_CONTROL_RESID_SYSTEM,
+	                    APP_CONTROL_CMD_SPI_FRAME_COUNT,
+	                    sizeof(uint32_t),
+	                    &frames_available);
+
 	return frames_available;
 }
 
-int save_spi_data(int pi)
+static uint8_t avona_interrupt_status(void)
 {
-	samp_t rx_buf[240][SPI_CHANNELS];
-	samp_t zeros[240][SPI_CHANNELS] = {{0},{0}};
+	uint8_t interrupt_status;
+
+	avona_dev_ctrl_read(APP_CONTROL_RESID_SYSTEM,
+	                    APP_CONTROL_CMD_SYSTEM_INTERRUPT_STATUS,
+	                    sizeof(uint8_t),
+	                    &interrupt_status);
+
+	return interrupt_status;
+}
+
+static void avona_interrupt_enable(bool enable)
+{
+	uint8_t e = enable ? 1 : 0;
+
+	avona_dev_ctrl_write(APP_CONTROL_RESID_SYSTEM,
+	                    APP_CONTROL_CMD_INTERRUPT_ENABLED,
+	                    sizeof(uint8_t),
+	                    &e);
+}
+
+static int cur_pos = 0;
+
+static void buffer_level_display(int level)
+{
+	int c = lround(78.0 * ((double) level / SPI_BUFFER_MAX_LEVEL));
+
+	if (cur_pos == 0) {
+		printf("\r\n");
+	}
+	cur_pos = 1;
+
+	printf("\r|");
+	for (int i = 0; i < c; i++) {
+		printf("=");
+	}
+	for (int i = 0; i < 78-c; i++) {
+		printf(" ");
+	}
+	printf("|");
+}
+
+static void status_message(char *msg)
+{
+	if (cur_pos == 1) {
+		printf("\r\033[1A\033[K");
+	}
+	printf("%s\n", msg);
+	cur_pos = 1;
+}
+
+static void cursor_hide(bool hide)
+{
+	printf("\033[?25%c", hide ? 'l' : 'h');
+}
+
+static void avona_spi_audio_read(samp_t audio[AUDIO_FRAME_LENGTH][SPI_CHANNELS])
+{
+	gpioWrite(8, 0);
+	gpioDelay(SPI_CS_TO_CLK_MIN_TIME_US);
+	(void) spiRead(spi, (char *) audio, sizeof(samp_t) * AUDIO_FRAME_LENGTH * SPI_CHANNELS);
+	gpioWrite(8, 1);
+
+	gpioDelay(SPI_CS_TO_CS_MIN_TIME_US);
+}
+
+static int save_spi_data(void)
+{
+	samp_t audio[AUDIO_FRAME_LENGTH][SPI_CHANNELS];
+	samp_t zeros[AUDIO_FRAME_LENGTH][SPI_CHANNELS] = {{0},{0}};
 	size_t avail;
 	static FILE *f;
 
@@ -40,23 +146,21 @@ int save_spi_data(int pi)
 		f = fopen("audio.dat", "wb");
 	}
 
-	while ((avail = spi_frames_available(pi)) > 0) {
+	while ((avail = avona_spi_frames_available()) > 0) {
+		uint32_t t0 = gpioTick();
 
 		for (; avail > 0; avail--) {
 
 			if (frames_saved < LENGTH) {
-
-				gpio_write(pi, 8, 0);
-				int br = spi_read(pi, spi, (char *) rx_buf, sizeof(rx_buf));
-				gpio_write(pi, 8, 1);
-				time_sleep(0.001);
-
-				if (memcmp(rx_buf, zeros, sizeof(rx_buf)) != 0) {
-					fwrite(rx_buf, 1, sizeof(rx_buf), f);
+				avona_spi_audio_read(audio);
+				if (memcmp(audio, zeros, sizeof(audio)) != 0) {
+					fwrite(audio, 1, sizeof(audio), f);
 					frames_saved++;
 				}
 			}
-			
+
+			buffer_level_display(avail + (gpioTick() - t0)/15000);
+
 			if (frames_saved == LENGTH) {
 				fclose(f);
 				f = NULL;
@@ -65,192 +169,198 @@ int save_spi_data(int pi)
 		}
 	}
 
+	buffer_level_display(avail);
+
 	return 1;
 }
 
-
-void intn_cb(int pi, unsigned user_gpio, unsigned level, uint32_t tick, int *io_expander)
+static void intn_cb(int gpio, int level, uint32_t tick)
 {
 	static int recording;
 	static int last_mute = 0;
-	
-	//printf("CB level %d\n", level);
 
-	int input = i2c_read_byte_data(pi, *io_expander, 0x00);
-	
-	if (input < 0) {
-		printf("i2c error\n");
-		return;
-	}
+	int input = i2cReadByteData(io_expander, 0x00);
 
 	int mute = (input >> 7) & 1;
 
 	if (mute != last_mute) {
-		printf("Mute changed to %d\n", mute);
+		if (mute) {
+			status_message("Muted");
+		} else {
+			status_message("Unmuted");
+		}
 		last_mute = mute;
 	}
 
-	if ((input & 0b00000010) == 0) {
+	if ((input & 0b00000010) == 0 || level == PI_TIMEOUT) {
 		/* interrupt from the xcore */
-
-		uint8_t ctrl_buf[3] = {5, 0x81, 1};
-		uint8_t interrupt_status;
-		i2c_write_device(pi, xcore_ctrl, ctrl_buf, 3);
-		i2c_read_device(pi, xcore_ctrl, &interrupt_status, 1);
-
-		//printf("%02x\n", interrupt_status);
+		uint8_t interrupt_status = avona_interrupt_status();
 
 		if (interrupt_status & 0x01) {
-			printf("Heard wakeword\n");
-			//event_trigger(pi, WAKEWORD_EVENT);
+			status_message("Heard wakeword - recording");
 			if (!recording) {
 				recording = 1;
-				event_trigger(pi, START_RECORDING);
 				frames_saved = 0;
-				save_spi_data(pi);
+				save_spi_data();
 			}
 		}
-		
+
 		if (interrupt_status & 0x02) {
-			//printf("SPI\n");
 			if (recording) {
-				if (save_spi_data(pi) == 0) {
+				if (save_spi_data() == 0) {
 					recording = 0;
-					event_trigger(pi, DONE_RECORDING);
+					recording_done = 1; /* signal to main loop */
 				}
 			}
-			//event_trigger(pi, SPI_EVENT);
 		}
 	}
+}
+
+static void wait_until_spi_buffer_full(void)
+{
+	int avail;
+
+	do {
+		avail = avona_spi_frames_available();
+		buffer_level_display(avail);
+		gpioDelay(1000);
+	} while (avail < SPI_BUFFER_MAX_LEVEL);
+}
+
+static void cleanup(void)
+{
+	printf("\n");
+	cursor_hide(false);
+
+	gpioSetISRFuncEx(27, FALLING_EDGE, 0, NULL, NULL);
+
+	if (spi >= 0) {
+		spiClose(spi);
+	}
+
+	if (io_expander >= 0) {
+		i2cClose(io_expander);
+	}
+
+	if (xcore_ctrl >= 0) {
+		i2cClose(xcore_ctrl);
+	}
+
+	gpioTerminate();
+}
+
+static void sigint_handler(int sig)
+{
+	cleanup();
+	exit(1);
 }
 
 int main(int argc, char **argv)
 {
 	bool ok = true;
-	int pi;
-	//int spi = PI_SPI_OPEN_FAILED;
-	int io_expander = PI_I2C_OPEN_FAILED;
-	//int xcore_ctrl = PI_I2C_OPEN_FAILED;
 
-	pi = pigpio_start(NULL, NULL);
-	if (pi < 0) {
-		printf("Failed to connect to pigpio server\n");
+	if (gpioInitialise() < 0) {
+		fprintf(stderr, "Failed to init pigpio\n");
 		ok = false;
 	}
 
+	signal(SIGINT, sigint_handler);
+
 	if (ok) {
-		io_expander = i2c_open(pi, 1, 0x20, 0);
+		io_expander = i2cOpen(1, 0x20, 0);
 
 		if (io_expander >= 0) {
 			/* SPI enabled, DAC in reset */
-			i2c_write_byte_data(pi, io_expander, 0x01, 0b10101111);
+			i2cWriteByteData(io_expander, 0x01, 0b10101111);
 
 			/* Set pin directions correctly */
-			i2c_write_byte_data(pi, io_expander, 0x03, 0b10001010);
+			i2cWriteByteData(io_expander, 0x03, 0b10001010);
 
 			/* Don't invert the inputs */
-			i2c_write_byte_data(pi, io_expander, 0x02, 0b00000000);
+			i2cWriteByteData(io_expander, 0x02, 0b00000000);
 
 			/* Latch the INT_N signal from the xcore */
-			i2c_write_byte_data(pi, io_expander, 0x42, 0b00000010);
-			//i2c_write_byte_data(pi, io_expander, 0x42, 0b00000000);
+			i2cWriteByteData(io_expander, 0x42, 0b00000010);
 
 			/* Disable interrupts on the INT_N signal */
-			i2c_write_byte_data(pi, io_expander, 0x45, 0b11111111);
+			i2cWriteByteData(io_expander, 0x45, 0b11111111);
 
 		} else {
+			fprintf(stderr, "Failed to open the I2C interface. Ensure I2C is enabled.\n");
 			ok = false;
 		}
 	}
 
 	if (ok) {
-		xcore_ctrl = i2c_open(pi, 1, 0x42, 0);
+		xcore_ctrl = i2cOpen(1, APP_CONTROL_I2C_ADDRESS, 0);
 		if (xcore_ctrl < 0) {
+			fprintf(stderr, "Failed to open the I2C interface. Ensure I2C is enabled.\n");
 			ok = false;
 		}
 	}
 
 	if (ok) {
-		set_mode(pi, 8, PI_OUTPUT); /* SPI CE */
-		
-		set_mode(pi, 27, PI_INPUT); /* INT_N */
-		set_pull_up_down(pi, 27, PI_PUD_OFF);
+		gpioSetMode(8, PI_OUTPUT); /* SPI CE */
 
-		spi = spi_open(pi, 0, 4000000, 0b100011);
+		gpioSetMode(27, PI_INPUT); /* INT_N */
+		gpioSetPullUpDown(27, PI_PUD_OFF);
+
+		spi = spiOpen(0, 4000000, 0b100011);
 
 		if (spi >= 0) {
-			gpio_write(pi, 8, 1);
+			gpioWrite(8, 1);
 		} else {
 			ok = false;
-			printf("Failed to open SPI\n");
+			fprintf(stderr, "Failed to open the SPI interface. Ensure SPI is enabled.\n");
 		}
 	}
 
 	if (ok) {
-		int intn_cbid;
-		
-		uint8_t ctrl_buf[4] = {5, 0x00, 1, 0};
 		/* Disable xcore interrupts */
-		i2c_write_device(pi, xcore_ctrl, ctrl_buf, 4);
-		
-		/* Clear out any outstanding xcore interrupts */
-		uint8_t ctrl2_buf[3] = {5, 0x81, 1};
-		uint8_t interrupt_status;
-		i2c_write_device(pi, xcore_ctrl, ctrl2_buf, 3);
-		i2c_read_device(pi, xcore_ctrl, &interrupt_status, 1);
-		
-		
-		/* At this point the xcore INT_N signal should be high */
-		
-		
-		/* Enable interrupts on the xcore INT_N signal */
-		i2c_write_byte_data(pi, io_expander, 0x45, 0b01111101);
-		
-		/* Ensure any outstanding interrupts are cleared */
-		i2c_read_byte_data(pi, io_expander, 0x00);
-		
-		/* At this point, the expander's INT_N signal should be high */
-		
-		//time_sleep(1);
-		
-		//printf("INTN is %d\n", gpio_read(pi, 27));
-		//set_glitch_filter(pi, 27, 10);
-		intn_cbid = callback_ex(pi, 27, FALLING_EDGE, (CBFuncEx_t) intn_cb, &io_expander); 
+		avona_interrupt_enable(false);
 
-		/* Enable xcore interrupts */
-		ctrl_buf[3] = 1;
-		i2c_write_device(pi, xcore_ctrl, ctrl_buf, 4);
-		
-		if (wait_for_event(pi, START_RECORDING, 100)) {
-			if (!wait_for_event(pi, DONE_RECORDING, 20)) {
-				ok = false;
-				printf("Recording failed\n");
-			}
+		/* Clear out any outstanding xcore interrupts */
+		(void) avona_interrupt_status();
+
+		/* At this point the xcore INT_N signal should be high */
+
+		/* Enable interrupts on the xcore INT_N signal */
+		i2cWriteByteData(io_expander, 0x45, 0b01111101);
+
+		/* Ensure any outstanding i/o expander interrupts are cleared */
+		i2cReadByteData(io_expander, 0x00);
+
+		/* At this point, the expander's INT_N signal should be high */
+
+		cursor_hide(true);
+		status_message("Not Listening");
+		wait_until_spi_buffer_full();
+		status_message("Listening");
+
+		if (gpioSetISRFunc(27, FALLING_EDGE, 32, (gpioISRFunc_t) intn_cb) == 0) {
+			/* Enable xcore interrupts */
+			avona_interrupt_enable(true);
 		} else {
-			printf("INTN is %d\n", gpio_read(pi, 27));
-			printf("Wakeword did not occur, exiting now\n");
 			ok = false;
 		}
-		
-		callback_cancel(intn_cbid);
 	}
 
-	if (spi >= 0) {
-		spi_close(pi, spi);
+	if (ok) {
+		while (!recording_done) {
+			gpioDelay(10000);
+		}
+
+		status_message("Done Recording - Not Listening");
+
+		gpioSetISRFuncEx(27, FALLING_EDGE, 0, NULL, NULL);
+
+		wait_until_spi_buffer_full();
 	}
 
-	if (io_expander >= 0) {
-		i2c_close(pi, io_expander);
-	}
+	signal(SIGINT, SIG_DFL);
 
-	if (xcore_ctrl >= 0) {
-		i2c_close(pi, xcore_ctrl);
-	}
+	cleanup();
 
-	if (pi >= 0) {
-		pigpio_stop(pi);
-	}
-
-	return 0;
+	return ok ? 0 : 1;
 }
 

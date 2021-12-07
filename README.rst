@@ -59,14 +59,15 @@ Running the Demo
 1) Plug the Voice Reference Design board into a Raspberry Pi 3B+.
 2) Plug speakers into the Pi's audio output jack.
 3) The Raspberry Pi should have a clean install of Raspberry Pi OS.
-4) Copy the 'host/ces_rpi_demo' directory over to the Pi. This can be copied directly onto its SD Card, via SFTP, or any other means.
-5) On the Pi, either locally with keyboard and monitor, or via SSH, cd to the ces_rpi_demo directory and build the demo by running:
+4) Enable the I2C interface. See the directions here: https://www.raspberrypi-spy.co.uk/2014/11/enabling-the-i2c-interface-on-the-raspberry-pi/
+5) Copy the 'host/ces_rpi_demo' directory over to the Pi. This can be copied directly onto its SD Card, via SFTP, or any other means.
+6) On the Pi, either locally with keyboard and monitor, or via SSH, cd to the ces_rpi_demo directory and build the demo by running:
 
     .. code-block:: console
 
       $ make
 
-6) Start the demo by running:
+7) Start the demo by running:
 
     .. code-block:: console
 
