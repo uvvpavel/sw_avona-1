@@ -22,7 +22,7 @@
 
 #ifndef appconfI2S_ENABLED
 #if XVF3610_Q60A || XCOREAI_EXPLORER
-#define appconfI2S_ENABLED         1
+#define appconfI2S_ENABLED         0
 #else
 #define appconfI2S_ENABLED         0
 #endif
@@ -57,7 +57,7 @@
 #endif
 
 #ifndef appconfSPI_OUTPUT_ENABLED
-#define appconfSPI_OUTPUT_ENABLED  1
+#define appconfSPI_OUTPUT_ENABLED  0
 #endif
 
 #ifndef appconfI2S_AUDIO_SAMPLE_RATE

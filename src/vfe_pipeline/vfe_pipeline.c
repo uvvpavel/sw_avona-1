@@ -68,8 +68,8 @@ volatile static uint8_t waste[DUMMY_AEC_DATA];
  * Audio pipeline runs at 16kHz with a 240 frame advance
  * split evenly among cores for now, but main core has additional work
  */
-#define AEC_MIPS_REQUIRED 300
-#define AEC_THREADS 3
+#define AEC_MIPS_REQUIRED 1
+#define AEC_THREADS 1
 #define AEC_THREAD_PRIO (configMAX_PRIORITIES - 1)
 
 #define AEC_TOTAL_CYCLE_COUNT ((AEC_MIPS_REQUIRED * 1000000 / VFE_PIPELINE_AUDIO_SAMPLE_RATE) * VFE_PIPELINE_AUDIO_FRAME_LENGTH)
@@ -146,55 +146,55 @@ static void init_dsp_stage_0(vfe_dsp_stage_0_state_t *state)
 
 static void stage0(frame_data_t *frame_data)
 {
-    EventBits_t all_sync_bits = 0;
-
-    app_control_aec_handler(NULL, 0);
-
-    for (int i = 0; i <= AEC_THREADS; i++)
-    {
-        all_sync_bits |= 1 << i;
-    }
-
-    xEventGroupSync(dsp_stage_0_state.sync_group_start, 1, all_sync_bits, portMAX_DELAY);
-    xEventGroupClearBits(dsp_stage_0_state.sync_group_start, all_sync_bits);
-
-    // Wait for workers to finish
-    xEventGroupSync(dsp_stage_0_state.sync_group_end, 1, all_sync_bits, portMAX_DELAY);
-    xEventGroupClearBits(dsp_stage_0_state.sync_group_end, all_sync_bits);
-
-    memcpy(frame_data->samples,
-           frame_data->samples,
-           sizeof(frame_data->samples));
+//    EventBits_t all_sync_bits = 0;
+//
+//    app_control_aec_handler(NULL, 0);
+//
+//    for (int i = 0; i <= AEC_THREADS; i++)
+//    {
+//        all_sync_bits |= 1 << i;
+//    }
+//
+//    xEventGroupSync(dsp_stage_0_state.sync_group_start, 1, all_sync_bits, portMAX_DELAY);
+//    xEventGroupClearBits(dsp_stage_0_state.sync_group_start, all_sync_bits);
+//
+//    // Wait for workers to finish
+//    xEventGroupSync(dsp_stage_0_state.sync_group_end, 1, all_sync_bits, portMAX_DELAY);
+//    xEventGroupClearBits(dsp_stage_0_state.sync_group_end, all_sync_bits);
+//
+//    memcpy(frame_data->samples,
+//           frame_data->samples,
+//           sizeof(frame_data->samples));
 }
 
 static void stage1(frame_data_t *frame_data)
 {
-    vtb_ch_pair_t *post_proc_frame = NULL;
-
-    app_control_stage1_handler(&dsp_stage_1_state, 0);
-
-    dsp_stage_1_process(&dsp_stage_1_state,
-                        (vtb_ch_pair_t *)frame_data->samples,
-                        &frame_data->stage_1_md,
-                        &post_proc_frame);
-
-    memcpy(frame_data->samples,
-           post_proc_frame,
-           sizeof(frame_data->samples));
+//    vtb_ch_pair_t *post_proc_frame = NULL;
+//
+//    app_control_stage1_handler(&dsp_stage_1_state, 0);
+//
+//    dsp_stage_1_process(&dsp_stage_1_state,
+//                        (vtb_ch_pair_t *)frame_data->samples,
+//                        &frame_data->stage_1_md,
+//                        &post_proc_frame);
+//
+//    memcpy(frame_data->samples,
+//           post_proc_frame,
+//           sizeof(frame_data->samples));
 }
 
 static void stage2(frame_data_t *frame_data)
 {
-    app_control_stage2_handler(&dsp_stage_2_state, 0);
-
-    /*
-     * The output frame can apparently be the input frame,
-     * provided that VFE_CHANNEL_PAIRS == 1
-     */
-    dsp_stage_2_process(&dsp_stage_2_state,
-                        (vtb_ch_pair_t *)frame_data->samples,
-                        frame_data->stage_1_md,
-                        frame_data->samples);
+//    app_control_stage2_handler(&dsp_stage_2_state, 0);
+//
+//    /*
+//     * The output frame can apparently be the input frame,
+//     * provided that VFE_CHANNEL_PAIRS == 1
+//     */
+//    dsp_stage_2_process(&dsp_stage_2_state,
+//                        (vtb_ch_pair_t *)frame_data->samples,
+//                        frame_data->stage_1_md,
+//                        frame_data->samples);
 
 //    for (int i = 0; i < VFE_FRAME_ADVANCE; i++) {
 //        frame_data->samples[0][i].ch_a *= 42;
@@ -207,7 +207,7 @@ void vfe_pipeline_init(
     void *input_app_data,
     void *output_app_data)
 {
-    const int stage_count = 3;
+    const int stage_count = 2;
 
     const audio_pipeline_stage_t stages[] = {
         (audio_pipeline_stage_t)stage0,
@@ -217,7 +217,7 @@ void vfe_pipeline_init(
 
     const configSTACK_DEPTH_TYPE stage_stack_sizes[] = {
         configMINIMAL_STACK_SIZE + RTOS_THREAD_STACK_SIZE(stage0) + RTOS_THREAD_STACK_SIZE(vfe_pipeline_input_i),
-        configMINIMAL_STACK_SIZE + RTOS_THREAD_STACK_SIZE(stage1),
+        configMINIMAL_STACK_SIZE + RTOS_THREAD_STACK_SIZE(stage1) + RTOS_THREAD_STACK_SIZE(vfe_pipeline_output_i),
         configMINIMAL_STACK_SIZE + RTOS_THREAD_STACK_SIZE(stage2) + RTOS_THREAD_STACK_SIZE(vfe_pipeline_output_i),
     };
 

@@ -63,11 +63,18 @@ void ww_samples_in_task(void *arg)
     }
 }
 
+void set_local_tile_processor_clk_div(unsigned divider);
+void enable_local_tile_processor_clock_divider(void);
+
+
 void ww_task_create(unsigned priority)
 {
     StreamBufferHandle_t audio_stream = xStreamBufferCreate(
-                                               2 * appconfAUDIO_PIPELINE_FRAME_ADVANCE,
+                                               20 * appconfAUDIO_PIPELINE_FRAME_ADVANCE,
                                                appconfWW_FRAMES_PER_INFERENCE);
+
+    enable_local_tile_processor_clock_divider();
+    set_local_tile_processor_clk_div(3);
 
     xTaskCreate((TaskFunction_t)ww_samples_in_task,
                 "ww_audio_rx",

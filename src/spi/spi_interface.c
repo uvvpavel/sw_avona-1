@@ -90,6 +90,43 @@ void spi_audio_send(rtos_intertile_t *intertile_ctx,
 
 static int is_full;
 
+unsigned get_local_pll_reg(void){
+  unsigned reg_val;
+  read_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_PLL_CTL_NUM, &reg_val);
+  return reg_val;
+}
+
+#define XTAL_MHZ 24
+unsigned get_local_core_clock(void){
+  unsigned pll_val = get_local_pll_reg();
+  return (XTAL_MHZ * (XS1_SS_PLL_CTL_FEEDBACK_MUL(pll_val) + 1) ) / (2 * (XS1_SS_PLL_CTL_INPUT_DIVISOR(pll_val) + 1 ) * (XS1_SS_PLL_CTL_POST_DIVISOR(pll_val) + 1 ));
+}
+
+void set_local_tile_processor_clk_div(unsigned divider){
+  write_pswitch_reg(get_local_tile_id(), XS1_PSWITCH_PLL_CLK_DIVIDER_NUM, divider - 1);
+  write_pswitch_reg(get_local_tile_id(), XS1_PSWITCH_PLL_CLK_DIVIDER_NUM, divider - 1);
+  write_pswitch_reg(get_local_tile_id(), XS1_PSWITCH_PLL_CLK_DIVIDER_NUM, divider - 1);
+  write_pswitch_reg(get_local_tile_id(), XS1_PSWITCH_PLL_CLK_DIVIDER_NUM, divider - 1);
+}
+
+void enable_local_tile_processor_clock_divider(void) {
+  unsigned xcore_ctrl0_data;
+  xcore_ctrl0_data = getps(XS1_PS_XCORE_CTRL0);
+  xcore_ctrl0_data = XS1_XCORE_CTRL0_CLK_DIVIDER_EN_SET(xcore_ctrl0_data, 1);
+  setps(XS1_PS_XCORE_CTRL0, xcore_ctrl0_data);
+}
+
+void set_local_ref_clk_div(unsigned divider){
+  write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_REF_CLK_DIVIDER_NUM, divider - 1);
+  write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_REF_CLK_DIVIDER_NUM, divider - 1);
+  write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_REF_CLK_DIVIDER_NUM, divider - 1);
+  write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_REF_CLK_DIVIDER_NUM, divider - 1);
+}
+
+void set_local_node_switch_clk_div(unsigned divider){
+  write_sswitch_reg(get_local_tile_id(), XS1_SSWITCH_CLK_DIVIDER_NUM, divider - 1);
+}
+
 static void spi_audio_in_task(void *arg)
 {
     for (;;) {
@@ -116,6 +153,30 @@ static void spi_audio_in_task(void *arg)
             if (!is_full) {
                 is_full = 1;
                 rtos_printf("SPI Output buffer is now full\n");
+                rtos_printf("tile 0 sleep\n");
+
+                rtos_printf("Current core clock is %u\n", get_local_core_clock());
+
+                enable_local_tile_processor_clock_divider();
+                set_local_ref_clk_div(40);
+                set_local_tile_processor_clk_div(40);
+                set_local_node_switch_clk_div(512);
+
+                //rtos_printf("Current core clock is now %u\n", get_local_core_clock());
+
+                hwtimer_t tmr = hwtimer_alloc();
+                hwtimer_delay(tmr, 100000000);
+
+
+                set_local_node_switch_clk_div(1);
+                set_local_tile_processor_clk_div(1);
+                set_local_ref_clk_div(4);
+
+                rtos_printf("tile 0 wake up\n");
+
+                //asm volatile("waiteu");
+
+
             }
         }
         size_t txd = xStreamBufferSend(samples_to_host_stream_buf, spi_audio_in_frame, sizeof(spi_audio_in_frame), 0);
