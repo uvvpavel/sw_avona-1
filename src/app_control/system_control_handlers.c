@@ -16,7 +16,11 @@ static device_control_servicer_t system_servicer;
 static SemaphoreHandle_t gpo_mutex;
 static EventGroupHandle_t interrupt_flags;
 static rtos_gpio_port_id_t intn_port;
-static const int intn_mask = 0x08;
+#if XVF3610_Q60A
+    static const int intn_mask = 0x08;
+#elif XCOREAI_EXPLORER
+    static const int intn_mask = 0x01;
+#endif
 
 static volatile int interrupt_out_enabled;
 
@@ -164,7 +168,11 @@ void app_control_system_servicer_register(void)
     const control_resid_t resources[] = {APP_CONTROL_RESID_SYSTEM};
     control_ret_t dc_ret;
 
+#if XVF3610_Q60A
     intn_port = rtos_gpio_port(PORT_GPO);
+#elif XCOREAI_EXPLORER
+    intn_port = rtos_gpio_port(WIFI_MOSI);
+#endif
     rtos_gpio_port_enable(gpio_ctx_t0, intn_port);
     rtos_gpio_port_out(gpio_ctx_t0, intn_port, intn_mask);
 
