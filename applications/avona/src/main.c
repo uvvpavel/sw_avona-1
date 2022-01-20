@@ -29,6 +29,7 @@
 
 #include "gpio_test/gpio_test.h"
 
+static chanend_t c_other_tile = 0;
 
 volatile int mic_from_usb = appconfMIC_SRC_DEFAULT;
 volatile int aec_ref_source = appconfAEC_REF_DEFAULT;
@@ -260,9 +261,112 @@ static void mem_analysis(void)
 	}
 }
 
+#include "xcore_clock_control.h"
+#include "low_power.h"
+
+
+#include <xcore/hwtimer.h>
+
+#include <platform.h>
+#include <xscope.h>
+#include <xccompat.h>
+extern void xscope_lock_acquire(void);
+extern void xscope_lock_release(void);
+
+void nop_task(void *arg)
+{
+    while(1)
+    {
+        asm volatile("nop");
+    }
+}
+
 void startup_task(void *arg)
 {
     rtos_printf("Startup task running from tile %d on core %d\n", THIS_XCORE_TILE, portGET_CORE_ID());
+
+    hwtimer_t tmr = hwtimer_alloc();
+
+
+    for( int i=0; i<8; i++)
+    {
+        xTaskCreate((TaskFunction_t) nop_task,
+                    "nop_task",
+                    RTOS_THREAD_STACK_SIZE(nop_task),
+                    NULL,
+                    5,
+                    NULL);
+    }
+
+
+    // rtos_printf("tile 0 id is 0x%x\ntile 1 id is 0x%x\ntile 1 id is 0x%x\n",
+    //         TILE_ID(0),
+    //         TILE_ID(1),
+    //         get_local_tile_id()
+    //     );
+    init_tile_clock_divider();
+#if ON_TILE(0)
+    while(1)
+    {
+        rtos_printf("tile %d delay 1s\n", THIS_XCORE_TILE);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        rtos_printf("tile %d wakeup and chanend\n", THIS_XCORE_TILE);
+        chan_out_byte(c_other_tile, 0xA5);
+
+        // unsigned pre_div = 0;
+        // unsigned mul = 0;
+        // unsigned post_div = 0;
+        // get_local_node_pll_ratio(&pre_div, &mul, &post_div);
+        // rtos_printf("tile %d pll ratios\n\tpre_div = %d\n\tmul = %d\n\tpost_div = %d\n", THIS_XCORE_TILE, pre_div, mul, post_div);
+        //
+        // set_local_node_pll_ratio(1, 25, 1);
+        //
+        // get_local_node_pll_ratio(&pre_div, &mul, &post_div);
+        // rtos_printf("tile %d pll ratios\n\tpre_div = %d\n\tmul = %d\n\tpost_div = %d\n", THIS_XCORE_TILE, pre_div, mul, post_div);
+        //
+        // vTaskDelay(pdMS_TO_TICKS(20000));
+        // rtos_printf("tile %d disable local tile clock\n", THIS_XCORE_TILE);
+        // disable_local_tile_processor_clock();
+    }
+#endif /* ON_TILE(0) */
+#if ON_TILE(1)
+    while(1)
+    {
+        rtos_printf("tile %d delay 5s\n", THIS_XCORE_TILE);
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        // rtos_printf("tile %d reset links\n", THIS_XCORE_TILE);
+        // dump_links(TILE_ID(0), TILE_ID(1));
+        // vTaskDelay(pdMS_TO_TICKS(1000));
+        // reset_local_links()
+        rtos_printf("tile %d wakeup and chanend got %x\n", THIS_XCORE_TILE, chan_in_byte(c_other_tile));
+
+        rtos_printf("power down\n");
+        xscope_lock_acquire();
+        power_down_from_this_tile();
+
+        // hwtimer_delay(tmr, 100000000);
+        for(int i=0; i<20000000;i++)
+        {
+            asm volatile("nop");
+        }
+        power_up_from_this_tile();
+        xscope_lock_release();
+        rtos_printf("powered up\n");
+
+
+        // unsigned pre_div = 0;
+        // unsigned mul = 0;
+        // unsigned post_div = 0;
+        // get_local_node_pll_ratio(&pre_div, &mul, &post_div);
+        // rtos_printf("tile %d pll ratios\n\tpre_div = %d\n\tmul = %d\n\tpost_div = %d\n", THIS_XCORE_TILE, pre_div, mul, post_div);
+
+
+        // rtos_printf("tile %d disable local tile clock\n", THIS_XCORE_TILE);
+        // disable_local_tile_processor_clock();
+        // rtos_printf("tile %d delay 3s\n", THIS_XCORE_TILE);
+        // vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+#endif /* ON_TILE(1) */
 
     platform_start();
 
@@ -300,7 +404,8 @@ static void tile_common_init(chanend_t c)
     control_ret_t ctrl_ret;
 
     platform_init(c);
-    chanend_free(c);
+    c_other_tile = c;
+    // chanend_free(c);
 
     ctrl_ret = app_control_init();
     xassert(ctrl_ret == CONTROL_SUCCESS);
