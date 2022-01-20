@@ -5,6 +5,7 @@
 
 #include "low_power.h"
 #include "xcore_utils.h"
+#include "xcore_clock_control.h"
 
 
 #define POWER_DOWN_REMOTE_TILE_PROCESSOR_DIVISOR 512

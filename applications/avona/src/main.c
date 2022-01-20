@@ -344,6 +344,9 @@ void startup_task(void *arg)
         xscope_lock_acquire();
         power_down_from_this_tile();
 
+        unsigned local_switch_freq = get_local_switch_clock();
+        unsigned local_tile_freq = get_local_tile_processor_clock();
+        unsigned local_vco = get_local_tile_vco_clock();
         // hwtimer_delay(tmr, 100000000);
         for(int i=0; i<20000000;i++)
         {
@@ -352,6 +355,12 @@ void startup_task(void *arg)
         power_up_from_this_tile();
         xscope_lock_release();
         rtos_printf("powered up\n");
+        rtos_printf("during power down switch: %d tile: %d vco: %d\n", local_switch_freq, local_tile_freq, local_vco);
+
+        local_switch_freq = get_local_switch_clock();
+        local_tile_freq = get_local_tile_processor_clock();
+        local_vco = get_local_tile_vco_clock();
+        rtos_printf("during power up switch: %d tile: %d vco: %d\n", local_switch_freq, local_tile_freq, local_vco);
 
 
         // unsigned pre_div = 0;

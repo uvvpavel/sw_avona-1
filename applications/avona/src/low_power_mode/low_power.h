@@ -5,7 +5,6 @@
 #define LOW_POWER_H_
 
 #include <xs1.h>
-#include "xcore_clock_control.h"
 
 // TODO add support for board specific req values
 

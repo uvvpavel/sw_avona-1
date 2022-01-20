@@ -76,7 +76,6 @@ set(APP_SOURCES
 
     "src/gpio_test/gpio_test.c"
 
-    "src/xcore_clock_control/xcore_clock_control.c"
     "src/low_power_mode/low_power.c"
 
     ${XMOS_RTOS_PLATFORM_SOURCES}
@@ -86,7 +85,6 @@ set_source_files_properties(src/usb/adaptive_rate_adjust.c PROPERTIES COMPILE_FL
 
 set(APP_INCLUDES
     "src"
-    "src/xcore_clock_control"
     "src/low_power_mode"
     "src/vfe_pipeline"
     "src/usb"
