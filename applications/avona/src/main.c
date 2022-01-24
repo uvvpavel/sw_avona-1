@@ -281,9 +281,54 @@ void nop_task(void *arg)
     }
 }
 
+#include "concurrency_support.h"
+
+void reader_task(void *arg)
+{
+    mrsw_lock_t *ctx = (mrsw_lock_t *)arg;
+    while(1)
+    {
+        rtos_printf("reader get\n");
+        if (mrsw_lock_reader_get(ctx, portMAX_DELAY) == RTOS_OSAL_SUCCESS)
+        {
+            rtos_printf("\treader\n");
+            vTaskDelay(100);
+            rtos_printf("\treader dn\n");
+            mrsw_lock_reader_put(ctx);
+        }
+        rtos_printf("reader wait\n");
+        vTaskDelay(1);
+    }
+}
+
+void writer_task(void *arg)
+{
+    mrsw_lock_t *ctx = (mrsw_lock_t *)arg;
+    while(1)
+    {
+        rtos_printf("writer get\n");
+        if (mrsw_lock_writer_get(ctx, portMAX_DELAY) == RTOS_OSAL_SUCCESS) {
+            rtos_printf("\twriter\n");
+            vTaskDelay(100);
+            rtos_printf("\twriter dn\n");
+            mrsw_lock_writer_put(ctx);
+        }
+        rtos_printf("writer wait\n");
+        vTaskDelay(100);
+    }
+}
+
+
 void startup_task(void *arg)
 {
     rtos_printf("Startup task running from tile %d on core %d\n", THIS_XCORE_TILE, portGET_CORE_ID());
+
+
+// test mrsw
+while(1) {;}
+
+
+
 
     hwtimer_t tmr = hwtimer_alloc();
 
@@ -429,6 +474,39 @@ static void tile_common_init(chanend_t c)
                 NULL,
                 appconfSTARTUP_TASK_PRIORITY,
                 NULL);
+
+    #if ON_TILE(0)
+        mrsw_lock_t lock;
+
+        mrsw_lock_create(&lock, NULL, MRSW_READER_PREFERRED);
+        // rtos_printf("%d r create res:%x\n",THIS_XCORE_TILE, mrsw_lock_create(&lock, NULL, MRSW_READER_PREFERRED));
+        // rtos_printf("%d r delete res:%x\n",THIS_XCORE_TILE, mrsw_lock_delete(&lock));
+        // mrsw_lock_create(&lock, NULL, MRSW_WRITER_PREFERRED);
+        // rtos_printf("%d w create res:%x\n",THIS_XCORE_TILE, mrsw_lock_create(&lock, NULL, MRSW_WRITER_PREFERRED));
+        // rtos_printf("%d w delete res:%x\n",THIS_XCORE_TILE, mrsw_lock_delete(&lock));
+
+        for( int i=0; i<2; i++)
+        {
+            xTaskCreate((TaskFunction_t) writer_task,
+                        "writer_task",
+                        RTOS_THREAD_STACK_SIZE(writer_task),
+                        &lock,
+                        5,
+                        NULL);
+        }
+
+        for( int i=0; i<5; i++)
+        {
+            xTaskCreate((TaskFunction_t) reader_task,
+                        "reader_task",
+                        RTOS_THREAD_STACK_SIZE(reader_task),
+                        &lock,
+                        5,
+                        NULL);
+        }
+
+
+    #endif
 
     rtos_printf("start scheduler on tile %d\n", THIS_XCORE_TILE);
     vTaskStartScheduler();
