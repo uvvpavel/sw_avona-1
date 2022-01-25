@@ -18,6 +18,7 @@
 #define appconfDEVICE_CONTROL_I2C_PORT 4
 #define appconfSPI_AUDIO_PORT          5
 #define appconfWW_SAMPLES_PORT         6
+#define appconfCLOCK_CONTROL_PORT      7
 
 
 #ifndef appconfI2S_ENABLED
@@ -140,6 +141,7 @@
 /* Task Priorities */
 #define appconfSTARTUP_TASK_PRIORITY              (configMAX_PRIORITIES/2 + 5)
 #define appconfGPIO_RPC_HOST_PRIORITY             (configMAX_PRIORITIES/2 + 2)
+#define appconfCLOCK_CONTROL_RPC_HOST_PRIORITY    (configMAX_PRIORITIES/2 + 2)
 #define appconfGPIO_TASK_PRIORITY                 (configMAX_PRIORITIES/2 + 2)
 #define appconfI2C_TASK_PRIORITY                  (configMAX_PRIORITIES/2 + 2)
 #define appconfDEVICE_CONTROL_USB_CLIENT_PRIORITY (configMAX_PRIORITIES/2 + 2)

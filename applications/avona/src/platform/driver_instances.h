@@ -1,4 +1,4 @@
-// Copyright (c) 2021 XMOS LIMITED. This Software is subject to the terms of the
+// Copyright (c) 2021-2022 XMOS LIMITED. This Software is subject to the terms of the
 // XMOS Public License: Version 1
 
 #ifndef DRIVER_INSTANCES_H_
@@ -13,6 +13,7 @@
 #include "rtos/drivers/mic_array/api/rtos_mic_array.h"
 #include "rtos/drivers/qspi_flash/api/rtos_qspi_flash.h"
 #include "rtos/drivers/spi/api/rtos_spi_master.h"
+#include "rtos/drivers/clock_control/api/rtos_clock_control.h"
 
 #define FLASH_TILE_NO      0
 #define I2C_TILE_NO        0
@@ -35,5 +36,6 @@ extern rtos_i2c_slave_t *i2c_slave_ctx;
 extern rtos_spi_slave_t *spi_slave_ctx;
 extern rtos_mic_array_t *mic_array_ctx;
 extern rtos_i2s_t *i2s_ctx;
+extern rtos_clock_control_t *cc_ctx_t0;
 
 #endif /* DRIVER_INSTANCES_H_ */

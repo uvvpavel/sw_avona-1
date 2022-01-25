@@ -1,4 +1,4 @@
-// Copyright (c) 2021 XMOS LIMITED. This Software is subject to the terms of the
+// Copyright (c) 2021-2022 XMOS LIMITED. This Software is subject to the terms of the
 // XMOS Public License: Version 1
 
 #include "driver_instances.h"
@@ -29,3 +29,6 @@ rtos_mic_array_t *mic_array_ctx = &mic_array_ctx_s;
 
 static rtos_i2s_t i2s_ctx_s;
 rtos_i2s_t *i2s_ctx = &i2s_ctx_s;
+
+static rtos_clock_control_t cc_ctx_t0_s;
+rtos_clock_control_t *cc_ctx_t0 = &cc_ctx_t0_s;
