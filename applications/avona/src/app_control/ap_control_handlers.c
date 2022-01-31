@@ -5,6 +5,7 @@
 #include "app_control.h"
 
 #define APP_CONTROL_CMD_AP_VERSION 0x00
+#define APP_CONTROL_CMD_AP_BARREL_ROLL 0x02
 #define APP_CONTROL_CMD_AP_MIC_FROM_USB 0x01
 
 static device_control_servicer_t ap_servicer;
@@ -23,6 +24,13 @@ static control_ret_t ap_read_cmd(control_resid_t resid, control_cmd_t cmd, uint8
     case CONTROL_CMD_SET_READ(APP_CONTROL_CMD_AP_VERSION):
         if (payload_len == sizeof(uint32_t)) {
             *((uint32_t *) payload) = 12345678;
+        } else {
+            ret = CONTROL_DATA_LENGTH_ERROR;
+        }
+        break;
+    case CONTROL_CMD_SET_READ(APP_CONTROL_CMD_AP_BARREL_ROLL):
+        if (payload_len == sizeof(uint32_t)) {
+            *((uint32_t *) payload) = 48624862;
         } else {
             ret = CONTROL_DATA_LENGTH_ERROR;
         }

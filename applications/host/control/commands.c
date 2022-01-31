@@ -25,6 +25,7 @@
  * host library.
  */
 #define APP_CONTROL_CMD_AP_VERSION 0x00
+#define APP_CONTROL_CMD_AP_BARREL_ROLL 0x02
 #define APP_CONTROL_CMD_AP_MIC_FROM_USB 0x01
 
 #ifndef CMDSPEC_ALLOC_STRINGS
@@ -35,6 +36,7 @@ static cmd_t commands[] = {
         {APP_CONTROL_RESID_AP, "version", TYPE_UINT32, 0, APP_CONTROL_CMD_AP_VERSION, CMD_RO, 1, "Returns the Avona audio pipeline version"},
         {APP_CONTROL_RESID_AP, "mic_from_usb", TYPE_UINT8, 0, APP_CONTROL_CMD_AP_MIC_FROM_USB, CMD_RW, 1, "Microphone audio is received from the USB host when true"},
         {APP_CONTROL_RESID_AP, "fixed_point_cmd", TYPE_INT32, 24, 0x7F, CMD_RW, 2, "This is an example fixed point command"},
+        {APP_CONTROL_RESID_AP, "do_a_barrel_roll", TYPE_INT32, 0, APP_CONTROL_CMD_AP_BARREL_ROLL, CMD_RO, 1, "Does a barrel roll"},
 };
 
 static char *command_param_type_name(cmd_param_type_t type)

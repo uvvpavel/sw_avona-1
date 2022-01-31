@@ -13,7 +13,7 @@
 
 #define VERSION_CMD 0x80
 
-struct arg_lit *help, *version;
+struct arg_lit *help, *version, *barroll;
 struct arg_str *get, *set, *cmd_args;
 struct arg_end *end;
 
@@ -24,6 +24,7 @@ int main(int argc, char **argv)
     void *argtable[] = {
         help    = arg_lit0(NULL, "help", "display this help and exit"),
         version = arg_lit0(NULL, "version", "display version info and exit"),
+        barroll = arg_lit0(NULL, "barrelroll", "do a barrel roll and exit"),
 
         get     = arg_str0("g", "get", "<cmd>", "Sends the specified get command and prints the return value(s). Must not be used with --set."),
         set     = arg_str0("s", "set", "<cmd>", "Sends the specified set command with the provided argument(s). Must not be used with --get."),
