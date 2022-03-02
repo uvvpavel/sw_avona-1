@@ -3,9 +3,13 @@
 
 #include <string.h>
 #include "app_control.h"
+#include "config/device_version.h"
 
 #define APP_CONTROL_CMD_AP_VERSION 0x00
 #define APP_CONTROL_CMD_AP_MIC_FROM_USB 0x01
+#define APP_CONTROL_CMD_AP_DEVICE_TO_USB_RATE 0x02
+#define APP_CONTROL_CMD_AP_USB_TO_DEVICE_RATE 0x03
+
 
 static device_control_servicer_t ap_servicer;
 
@@ -22,14 +26,35 @@ static control_ret_t ap_read_cmd(control_resid_t resid, control_cmd_t cmd, uint8
     switch (cmd) {
     case CONTROL_CMD_SET_READ(APP_CONTROL_CMD_AP_VERSION):
         if (payload_len == sizeof(uint32_t)) {
-            *((uint32_t *) payload) = 12345678;
+            uint8_t *payload = NULL;
+            if (payload)
+                *((uint32_t *) payload) = ((DEVICE_VERSION_MAJOR & 0xFF) << 8) | ((DEVICE_VERSION_MINOR & 0xFF) << 4) | (DEVICE_VERSION_PATCH & 0xF);
         } else {
             ret = CONTROL_DATA_LENGTH_ERROR;
         }
         break;
     case CONTROL_CMD_SET_READ(APP_CONTROL_CMD_AP_MIC_FROM_USB):
         if (payload_len == sizeof(uint8_t)) {
+            uint8_t *payload = NULL;
             *payload = mic_from_usb;
+        } else {
+            ret = CONTROL_DATA_LENGTH_ERROR;
+        }
+        break;
+    case CONTROL_CMD_SET_READ(APP_CONTROL_CMD_AP_DEVICE_TO_USB_RATE):
+        if (payload_len == sizeof(uint32_t)) {
+            uint8_t *payload = NULL;
+            if (payload)
+                *((uint32_t *)payload) = appconfUSB_AUDIO_SAMPLE_RATE;
+        } else {
+            ret = CONTROL_DATA_LENGTH_ERROR;
+        }
+        break;
+    case CONTROL_CMD_SET_READ(APP_CONTROL_CMD_AP_USB_TO_DEVICE_RATE):
+        if (payload_len == sizeof(uint32_t)) {
+            uint8_t *payload = NULL;
+            if (payload)
+                *((uint32_t *)payload) = appconfUSB_AUDIO_SAMPLE_RATE;
         } else {
             ret = CONTROL_DATA_LENGTH_ERROR;
         }

@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <string.h>
 #include "argtable/argtable3.h"
 #include "commands.h"
 

@@ -26,6 +26,9 @@
  */
 #define APP_CONTROL_CMD_AP_VERSION 0x00
 #define APP_CONTROL_CMD_AP_MIC_FROM_USB 0x01
+#define APP_CONTROL_CMD_AP_DEVICE_TO_USB_RATE 0x02
+#define APP_CONTROL_CMD_AP_USB_TO_DEVICE_RATE 0x03
+
 
 #ifndef CMDSPEC_ALLOC_STRINGS
 #define CMDSPEC_ALLOC_STRINGS 1
@@ -35,6 +38,8 @@ static cmd_t commands[] = {
         {APP_CONTROL_RESID_AP, "version", TYPE_UINT32, 0, APP_CONTROL_CMD_AP_VERSION, CMD_RO, 1, "Returns the Avona audio pipeline version"},
         {APP_CONTROL_RESID_AP, "mic_from_usb", TYPE_UINT8, 0, APP_CONTROL_CMD_AP_MIC_FROM_USB, CMD_RW, 1, "Microphone audio is received from the USB host when true"},
         {APP_CONTROL_RESID_AP, "fixed_point_cmd", TYPE_INT32, 24, 0x7F, CMD_RW, 2, "This is an example fixed point command"},
+        {APP_CONTROL_RESID_AP, "device_to_usb_rate", TYPE_UINT32, 0, APP_CONTROL_CMD_AP_DEVICE_TO_USB_RATE, CMD_RO, 1, "The device to USB sample rate"},
+        {APP_CONTROL_RESID_AP, "usb_to_device_rate", TYPE_UINT32, 0, APP_CONTROL_CMD_AP_USB_TO_DEVICE_RATE, CMD_RO, 1, "The USB to device sample rate"},
 };
 
 static char *command_param_type_name(cmd_param_type_t type)
@@ -79,7 +84,7 @@ void command_list_print(void)
     int i;
 
     for (i = 0; i < ARRAY_SIZE(commands); i++) {
-        /* print shit about each command. do a get and/or set version */
+        /* print about each command. do a get and/or set version */
         cmd_t *cmd = &commands[i];
 
         printf("%s\n", cmd->cmd_name);
