@@ -14,7 +14,7 @@
 
 #define VERSION_CMD 0x80
 
-struct arg_lit *help, *version;
+struct arg_lit *help, *version, *barroll;
 struct arg_str *get, *set, *cmd_args;
 struct arg_end *end;
 
